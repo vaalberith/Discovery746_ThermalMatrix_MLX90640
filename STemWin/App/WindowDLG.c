@@ -30,14 +30,14 @@
 *
 **********************************************************************
 */
-#define ID_WINDOW_0            (GUI_ID_USER + 0x00)
-#define ID_BUTTON_0            (GUI_ID_USER + 0x03)
-#define ID_BUTTON_1            (GUI_ID_USER + 0x04)
-#define ID_SPINBOX_0            (GUI_ID_USER + 0x0B)
-#define ID_TEXT_0            (GUI_ID_USER + 0x0C)
-#define ID_SLIDER_0            (GUI_ID_USER + 0x10)
-#define ID_SLIDER_1            (GUI_ID_USER + 0x11)
-#define ID_BUTTON_2            (GUI_ID_USER + 0x12)
+#define ID_WINDOW_0              (GUI_ID_USER + 0x00)
+#define ID_BUTTON_0              (GUI_ID_USER + 0x01)
+#define ID_BUTTON_1              (GUI_ID_USER + 0x02)
+#define ID_SPINBOX_0             (GUI_ID_USER + 0x03)
+#define ID_SLIDER_0             (GUI_ID_USER + 0x05)
+#define ID_SLIDER_1             (GUI_ID_USER + 0x06)
+#define ID_BUTTON_2             (GUI_ID_USER + 0x07)
+#define ID_CHECKBOX_0            (GUI_ID_USER + 0x08)
 
 
 // USER START (Optionally insert additional defines)
@@ -52,15 +52,16 @@
 
 // USER START (Optionally insert additional static data)
 
+extern uint8_t chess_mode;
 extern uint8_t drawT;
 extern uint8_t freq;
 extern uint8_t scan_enabled;
 extern uint8_t need_to_clear;
 extern uint8_t need_to_redraw;
 extern uint8_t need_to_save;
-
-extern float T_MIN;
-extern float T_MAX;
+extern uint8_t need_to_cfg;
+extern uint16_t T_MIN;
+extern uint16_t T_MAX;
 
 // USER END
 
@@ -69,14 +70,14 @@ extern float T_MAX;
 *       _aDialogCreate
 */
 static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
-  { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 50, 0, 80, 272, 0, 0x0, 0 },
-  { BUTTON_CreateIndirect, "Clear", ID_BUTTON_0, 0, 180, 75, 40, 0, 0x0, 0 },
-  { BUTTON_CreateIndirect, "Save", ID_BUTTON_1, 0, 84, 75, 26, 0, 0x0, 0 },
-  { SPINBOX_CreateIndirect, "DelayNum", ID_SPINBOX_0, 2, 0, 75, 40, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Delay", ID_TEXT_0, 16, 54, 50, 20, 0, 0x0, 0 },
+  { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 50, 0, 75, 272, 0, 0x0, 0 },
+  { BUTTON_CreateIndirect, "Clear", ID_BUTTON_0, 0, 40, 75, 40, 0, 0x0, 0 },
+  { BUTTON_CreateIndirect, "Save", ID_BUTTON_1, 0, 85, 75, 26, 0, 0x0, 0 },
+  { SPINBOX_CreateIndirect, "DelayNum", ID_SPINBOX_0, 0, 129, 75, 40, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderL", ID_SLIDER_0, 0, 250, 75, 23, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderH", ID_SLIDER_1, 0, 225, 75, 23, 0, 0x0, 0 },
-  { BUTTON_CreateIndirect, "Launch", ID_BUTTON_2, 0, 140, 75, 40, 0, 0x0, 0 },
+  { BUTTON_CreateIndirect, "Launch", ID_BUTTON_2, 0, 0, 75, 40, 0, 0x0, 0 },
+  { CHECKBOX_CreateIndirect, "Chess", ID_CHECKBOX_0, 0, 170, 80, 20, 0, 0x0, 0 },
   // USER START (Optionally insert additional widgets)
   // USER END
 };
@@ -123,23 +124,27 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     // Initialization of 'DelayNum'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
-    SPINBOX_SetFont(hItem, GUI_FONT_16_1);
-    //
-    // Initialization of 'Delay'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
-    TEXT_SetFont(hItem, GUI_FONT_16_1);
-    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
+    SPINBOX_SetFont(hItem, GUI_FONT_4X6);
     //
     // Initialization of 'Launch'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_2);
     BUTTON_SetFont(hItem, GUI_FONT_16B_1);
+    //
+    // Initialization of 'Chess'
+    //
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_CHECKBOX_0);
+    CHECKBOX_SetText(hItem, "Chess");
+    CHECKBOX_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
+    CHECKBOX_SetFont(hItem, GUI_FONT_16B_1);
     // USER START (Optionally insert additional code for further widget initialization)
+    
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_CHECKBOX_0);
+    CHECKBOX_SetState(hItem, chess_mode);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
     SPINBOX_SetValue(hItem, freq);
-    SPINBOX_SetRange(hItem, 1, 255);
+    SPINBOX_SetRange(hItem, 0, 7);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_0);
     SLIDER_SetRange(hItem, -50, 50);
@@ -203,6 +208,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
     	  freq = SPINBOX_GetValue(hItem);
+        need_to_cfg = 1;
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)
@@ -260,6 +266,26 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
         break;
       case WM_NOTIFICATION_RELEASED:
         // USER START (Optionally insert code for reacting on notification message)
+        // USER END
+        break;
+      // USER START (Optionally insert additional code for further notification handling)
+      // USER END
+      }
+      break;
+    case ID_CHECKBOX_0: // Notifications sent by 'Chess'
+      switch(NCode) {
+      case WM_NOTIFICATION_CLICKED:
+        // USER START (Optionally insert code for reacting on notification message)
+        // USER END
+        break;
+      case WM_NOTIFICATION_RELEASED:
+        // USER START (Optionally insert code for reacting on notification message)
+        // USER END
+        break;
+      case WM_NOTIFICATION_VALUE_CHANGED:
+        // USER START (Optionally insert code for reacting on notification message)
+        chess_mode = !chess_mode;
+        need_to_cfg = 1;
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)

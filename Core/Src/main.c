@@ -68,6 +68,7 @@
 #include "DIALOG.h"
 
 #include "MLX90640_API.h"
+#include "math.h"
 
 /* USER CODE END Includes */
 
@@ -136,6 +137,8 @@ static void MX_SDMMC1_SD_Init(void);
 #define SDRAM_ADDR_START_SCREENSHOT 0xC0300000
 #define SDRAM_ADDR_START_CAM 0xC0500000
 
+//
+
 #define  FPS2HZ   0x02
 #define  FPS4HZ   0x03
 #define  FPS8HZ   0x04
@@ -143,15 +146,16 @@ static void MX_SDMMC1_SD_Init(void);
 #define  FPS32HZ  0x06
 
 #define  MLX90640_ADDR 0x33
-#define	 RefreshRate FPS8HZ 
 #define  TA_SHIFT 8 //Default shift for MLX90640 in open air
 
 static uint16_t eeMLX90640[832];  
 static float mlx90640To[768];
 uint16_t frame[834];
 float emissivity=0.95;
-int status;
 uint8_t freq = FPS8HZ;
+uint8_t chess_mode = 1;
+
+paramsMLX90640 mlx90640;
 
 //
 
@@ -205,6 +209,7 @@ uint8_t scan_enabled = 0;
 uint8_t need_to_clear = 0;
 uint8_t need_to_redraw = 0;
 uint8_t need_to_save = 0;
+uint8_t need_to_cfg = 0;
 
 //
 
@@ -410,22 +415,6 @@ void drawLegend(float t_min, float t_max)
   }
 }
 
-void writeColRow(int col, int row)
-{
-  snprintf(str, sizeof(str), "%d", col);
-  setListViewData(2, str);
-  snprintf(str, sizeof(str), "%d", row);
-  setListViewData(3, str);
-}
-
-void writeTemp(float temp)
-{
-  if (temp < -274 || temp > 500)
-    return;
-  snprintf(str, sizeof(str), "%+.1f", temp);
-  setListViewData(4, str);
-}
-
 //
 
 void handleTouch(uint16_t x, uint16_t y)
@@ -557,6 +546,28 @@ void makePrintScreen()
   SD_busy = 0;
 }
 
+void cfgMLX()
+{
+  float r_freq = pow(2.0, freq)/2.0;
+  snprintf(str, sizeof(str), "%1.f Hz", r_freq);
+  GUI_SelectLayer(1);
+  drawText(str, 100, 140, GUI_RED, &GUI_Font6x8);
+  GUI_SelectLayer(0);
+  
+  if (!chess_mode)
+    MLX90640_SetChessMode(MLX90640_ADDR);
+  else
+    MLX90640_SetInterleavedMode(MLX90640_ADDR);
+  
+  MLX90640_SetResolution(MLX90640_ADDR, 0x03);
+  
+  MLX90640_SetRefreshRate(MLX90640_ADDR, freq);
+	
+  MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
+  MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
+    
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -627,21 +638,16 @@ int main(void)
 
   
   //
-  HAL_Delay(100);
+  HAL_Delay(10);
   CreateWindow();
-  HAL_Delay(100);
+  HAL_Delay(10);
   drawLegend(T_MIN, T_MAX);
-  HAL_Delay(100);
-
+  HAL_Delay(10);
   
-  
-  MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
-	MLX90640_SetChessMode(MLX90640_ADDR);
-	paramsMLX90640 mlx90640;
-  status = MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
-  status = MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
   //GUI_SelectLayer(0);
-
+  
+  cfgMLX();
+  HAL_Delay(10);
   
   while(1)
   {
@@ -660,6 +666,9 @@ int main(void)
     if (need_to_clear)
     {
       need_to_clear = 0;
+      
+      HAL_Delay(10);
+      
       GUI_Clear();
       drawLegend(T_MIN, T_MAX);
       
@@ -668,6 +677,9 @@ int main(void)
     if (need_to_redraw)
     {
       need_to_redraw = 0;
+      
+      HAL_Delay(10);
+      
       GUI_Clear();
       drawLegend(T_MIN, T_MAX);
       
@@ -680,15 +692,26 @@ int main(void)
     if (need_to_save)
     {
       need_to_save = 0;
+      
       saveCfg();
     }
-    
+    if (need_to_cfg)
+    {
+      need_to_cfg = 0;
+      
+      HAL_Delay(10);
+      
+      cfgMLX();
+      
+      HAL_Delay(10);
+    }
     if (scan_enabled)
     {
       MLX90640_GetFrameData(MLX90640_ADDR, frame);
       float Ta = MLX90640_GetTa(frame, &mlx90640);
       float Tr = Ta - TA_SHIFT;
       MLX90640_CalculateTo(frame, &mlx90640, emissivity , Tr, mlx90640To);
+      
       for (int j = 0; j < row_count; j++)
         for (int i = 0; i < col_count; i++)
           drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
