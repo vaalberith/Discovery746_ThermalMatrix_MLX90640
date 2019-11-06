@@ -73,11 +73,7 @@
 #define COLOR_CONVERSION_0      GUICC_M8888I
 #define DISPLAY_DRIVER_0        GUIDRV_LIN_32
 
-#define COLOR_CONVERSION_1      GUICC_M8888I
-#define DISPLAY_DRIVER_1        GUIDRV_LIN_32
-
 #define LCD_LAYER0_FRAME_BUFFER        ((uint32_t)0xc0000000) /* LTDC Layer 0 frame buffer */
-#define LCD_LAYER1_FRAME_BUFFER        ((uint32_t)0xc0100000) /* LTDC Layer 0 frame buffer */
 
 extern LTDC_HandleTypeDef    hltdc;
 extern DMA2D_HandleTypeDef   hdma2d;

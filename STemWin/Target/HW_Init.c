@@ -60,7 +60,7 @@ DMA2D_HandleTypeDef           hdma2d;
 
 SDRAM_HandleTypeDef hsdram1;
 
-#define REFRESH_COUNT        1647
+#define REFRESH_COUNT        1656
 
 #define SDRAM_TIMEOUT                            ((uint32_t)0xFFFF)
 #define SDRAM_MODEREG_BURST_LENGTH_1             ((uint16_t)0x0000)
@@ -86,7 +86,6 @@ static FMC_SDRAM_CommandTypeDef Command;
 void MX_LCD_Init(void) 
 { 
  LTDC_LayerCfgTypeDef pLayerCfg;
- LTDC_LayerCfgTypeDef pLayerCfg1;
 
 /* De-Initialize LTDC */
   HAL_LTDC_DeInit(&hltdc);
@@ -129,26 +128,6 @@ void MX_LCD_Init(void)
   pLayerCfg.Backcolor.Green = 0;
   pLayerCfg.Backcolor.Red = 0;
   if (HAL_LTDC_ConfigLayer(&hltdc, &pLayerCfg, 0) != HAL_OK)
-  {
-    Error_Handler( );
-  }
-
-  pLayerCfg1.WindowX0 = 0;
-  pLayerCfg1.WindowX1 = 480;
-  pLayerCfg1.WindowY0 = 0;
-  pLayerCfg1.WindowY1 = 272;
-  pLayerCfg1.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
-  pLayerCfg1.Alpha = 255;
-  pLayerCfg1.Alpha0 = 0;
-  pLayerCfg1.BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
-  pLayerCfg1.BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
-  pLayerCfg1.FBStartAdress = 0xC0100000;
-  pLayerCfg1.ImageWidth = 480;
-  pLayerCfg1.ImageHeight = 272;
-  pLayerCfg1.Backcolor.Blue = 0;
-  pLayerCfg1.Backcolor.Green = 0;
-  pLayerCfg1.Backcolor.Red = 0;
-  if (HAL_LTDC_ConfigLayer(&hltdc, &pLayerCfg1, 1) != HAL_OK)
   {
     Error_Handler( );
   }

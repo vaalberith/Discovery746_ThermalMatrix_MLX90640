@@ -382,10 +382,10 @@ uint32_t temp_to_rgb(float temp, float t_min, float t_max)
 
 void drawPixel(int col, int row, float temp, float t_min, float t_max, uint8_t drawlabel)
 {
-  int x1 = (int)(start_x+1 + (col-0.5f)*sq_size_x);
-  int y1 = (int)(start_y+1 + (row-0.5f)*sq_size_y);
-  int x2 = (int)(start_x + (col+0.5f)*sq_size_x);
-  int y2 = (int)(start_y + (row+0.5f)*sq_size_y);
+  int x1 = (int)(start_x + col*sq_size_x);
+  int y1 = (int)(start_y + row*sq_size_y);
+  int x2 = (int)(start_x + (col+1)*sq_size_x);
+  int y2 = (int)(start_y + (row+1)*sq_size_y);
   
   uint32_t color = temp_to_rgb(temp, t_min, t_max);
   GUI_SetColor(color);
@@ -629,6 +629,12 @@ void makePrintScreen()
   SD_busy = 0;
 }
 
+#define  FPS2HZ   0x02
+#define  FPS4HZ   0x03
+#define  FPS8HZ   0x04
+#define  FPS16HZ  0x05
+#define  FPS32HZ  0x06
+
 #define  MLX90640_ADDR 0x33
 #define	 RefreshRate FPS16HZ 
 #define  TA_SHIFT 8 //Default shift for MLX90640 in open air
@@ -699,13 +705,8 @@ int main(void)
   GRAPHICS_Init();
   
   layer0_StartAddr = hltdc.LayerCfg[0].FBStartAdress;
-  layer1_StartAddr = hltdc.LayerCfg[1].FBStartAdress;
   
   GUI_Clear();
-  GUI_SelectLayer(1);
-  GUI_SetBkColor(GUI_TRANSPARENT);
-  GUI_Clear();
-  GUI_SelectLayer(0);
   
   //
   HAL_Delay(100);
@@ -720,15 +721,12 @@ int main(void)
   
   col_count = 32;
   row_count = 24;
-  calcPixelSizePos();
   
-  //MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
+  MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
 	MLX90640_SetChessMode(MLX90640_ADDR);
 	paramsMLX90640 mlx90640;
   status = MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
-  if (status != 0) printf("\r\nload system parameters error with code:%d\r\n",status);
   status = MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
-  if (status != 0) printf("\r\nParameter extraction failed with error code:%d\r\n",status);
   
   while(1)
   {
@@ -740,19 +738,6 @@ int main(void)
 		float tr = Ta - TA_SHIFT;
 		MLX90640_CalculateTo(frame, &mlx90640, emissivity , tr, mlx90640To);
     
-    /*printf("\r\n");
-    printf("\r\n");
-    for(int i = 0; i < 768; i++)
-    {
-			if(i%32 == 0 && i != 0)
-      {
-				printf("\r\n");
-			}
-			printf("%2.2f ",mlx90640To[i]);
-		}
-    printf("\r\n");
-    printf("\r\n");
-    HAL_Delay(500);*/
     for (int j = 0; j < row_count; j++)
       for (int i = 0; i < col_count; i++)
         drawPixel(i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
@@ -931,7 +916,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00401959;
+  hi2c1.Init.Timing = 0x0020081F;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
