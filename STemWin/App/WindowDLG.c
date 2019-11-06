@@ -30,24 +30,14 @@
 *
 **********************************************************************
 */
-#define ID_WINDOW_0             (GUI_ID_USER + 0x00)
-#define ID_BUTTON_0             (GUI_ID_USER + 0x01)
-#define ID_BUTTON_1             (GUI_ID_USER + 0x02)
-#define ID_BUTTON_2             (GUI_ID_USER + 0x03)
-#define ID_BUTTON_3             (GUI_ID_USER + 0x04)
-#define ID_SPINBOX_0             (GUI_ID_USER + 0x05)
-#define ID_TEXT_0             (GUI_ID_USER + 0x06)
-#define ID_SPINBOX_1             (GUI_ID_USER + 0x07)
-#define ID_TEXT_1             (GUI_ID_USER + 0x08)
-#define ID_SPINBOX_2             (GUI_ID_USER + 0x09)
-#define ID_TEXT_2             (GUI_ID_USER + 0x0A)
-#define ID_SPINBOX_3             (GUI_ID_USER + 0x0B)
-#define ID_TEXT_3             (GUI_ID_USER + 0x0C)
-#define ID_CHECKBOX_0            (GUI_ID_USER + 0x0D)
-#define ID_CHECKBOX_1            (GUI_ID_USER + 0x0E)
-#define ID_LISTVIEW_0            (GUI_ID_USER + 0x0F)
+#define ID_WINDOW_0            (GUI_ID_USER + 0x00)
+#define ID_BUTTON_0            (GUI_ID_USER + 0x03)
+#define ID_BUTTON_1            (GUI_ID_USER + 0x04)
+#define ID_SPINBOX_0            (GUI_ID_USER + 0x0B)
+#define ID_TEXT_0            (GUI_ID_USER + 0x0C)
 #define ID_SLIDER_0            (GUI_ID_USER + 0x10)
 #define ID_SLIDER_1            (GUI_ID_USER + 0x11)
+#define ID_BUTTON_2            (GUI_ID_USER + 0x12)
 
 
 // USER START (Optionally insert additional defines)
@@ -63,21 +53,14 @@
 // USER START (Optionally insert additional static data)
 
 extern uint8_t drawT;
-
+extern uint8_t freq;
 extern uint8_t scan_enabled;
 extern uint8_t need_to_clear;
 extern uint8_t need_to_redraw;
 extern uint8_t need_to_save;
 
-extern uint16_t T_MIN;
-extern uint16_t T_MAX;
-
-WM_HWIN listview;
-
-void setListViewData(uint8_t index, char *str)
-{
-  LISTVIEW_SetItemText(listview, index, 0, str);
-}
+extern float T_MIN;
+extern float T_MAX;
 
 // USER END
 
@@ -86,24 +69,14 @@ void setListViewData(uint8_t index, char *str)
 *       _aDialogCreate
 */
 static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
-  { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 50, 0, 160, 272, 0, 0x0, 0 },
-  { BUTTON_CreateIndirect, "1 Scan", ID_BUTTON_0, 0, 185, 75, 40, 0, 0x0, 0 },
-  { BUTTON_CreateIndirect, "Detect", ID_BUTTON_1, 0, 140, 75, 40, 0, 0x0, 0 },
-  { BUTTON_CreateIndirect, "Clear", ID_BUTTON_2, 80, 185, 75, 40, 0, 0x0, 0 },
-  { BUTTON_CreateIndirect, "Save", ID_BUTTON_3, 80, 140, 75, 40, 0, 0x0, 0 },
-  { SPINBOX_CreateIndirect, "RowsNum", ID_SPINBOX_0, 0, 95, 75, 40, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Rows", ID_TEXT_0, 20, 80, 50, 20, 0, 0x0, 0 },
-  { SPINBOX_CreateIndirect, "ColsNum", ID_SPINBOX_1, 80, 95, 75, 40, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Cols", ID_TEXT_1, 100, 80, 50, 20, 0, 0x0, 0 },
-  { SPINBOX_CreateIndirect, "StepNum", ID_SPINBOX_2, 0, 40, 75, 40, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Step", ID_TEXT_2, 20, 25, 50, 20, 0, 0x0, 0 },
-  { SPINBOX_CreateIndirect, "DelayNum", ID_SPINBOX_3, 80, 40, 75, 40, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Delay", ID_TEXT_3, 100, 25, 50, 20, 0, 0x0, 0 },
-  { CHECKBOX_CreateIndirect, "DrawTemp", ID_CHECKBOX_0, 80, 230, 70, 20, 0, 0x0, 0 },
-  { CHECKBOX_CreateIndirect, "OnOff", ID_CHECKBOX_1, 0, 230, 70, 20, 0, 0x0, 0 },
-  { LISTVIEW_CreateIndirect, "Listview", ID_LISTVIEW_0, 0, 0, 160, 27, 0, 0x0, 0 },
+  { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 50, 0, 80, 272, 0, 0x0, 0 },
+  { BUTTON_CreateIndirect, "Clear", ID_BUTTON_0, 0, 180, 75, 40, 0, 0x0, 0 },
+  { BUTTON_CreateIndirect, "Save", ID_BUTTON_1, 0, 84, 75, 26, 0, 0x0, 0 },
+  { SPINBOX_CreateIndirect, "DelayNum", ID_SPINBOX_0, 2, 0, 75, 40, 0, 0x0, 0 },
+  { TEXT_CreateIndirect, "Delay", ID_TEXT_0, 16, 54, 50, 20, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderL", ID_SLIDER_0, 0, 250, 75, 23, 0, 0x0, 0 },
-  { SLIDER_CreateIndirect, "SliderH", ID_SLIDER_1, 80, 250, 75, 23, 0, 0x0, 0 },
+  { SLIDER_CreateIndirect, "SliderH", ID_SLIDER_1, 0, 225, 75, 23, 0, 0x0, 0 },
+  { BUTTON_CreateIndirect, "Launch", ID_BUTTON_2, 0, 140, 75, 40, 0, 0x0, 0 },
   // USER START (Optionally insert additional widgets)
   // USER END
 };
@@ -137,122 +110,43 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     hItem = pMsg->hWin;
     WINDOW_SetBkColor(hItem, GUI_MAKE_COLOR(0x00000000));
     //
-    // Initialization of '1 Scan'
+    // Initialization of 'Clear'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_0);
     BUTTON_SetFont(hItem, GUI_FONT_16B_1);
     //
-    // Initialization of 'Detect'
+    // Initialization of 'Save'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_1);
     BUTTON_SetFont(hItem, GUI_FONT_16B_1);
     //
-    // Initialization of 'Clear'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_2);
-    BUTTON_SetFont(hItem, GUI_FONT_16B_1);
-    //
-    // Initialization of 'Save'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_3);
-    BUTTON_SetFont(hItem, GUI_FONT_16B_1);
-    //
-    // Initialization of 'RowsNum'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
-    SPINBOX_SetFont(hItem, GUI_FONT_16_1);
-    //
-    // Initialization of 'Rows'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
-    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
-    TEXT_SetFont(hItem, GUI_FONT_16_1);
-    //
-    // Initialization of 'ColsNum'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_1);
-    SPINBOX_SetFont(hItem, GUI_FONT_16_1);
-    //
-    // Initialization of 'Cols'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
-    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
-    TEXT_SetFont(hItem, GUI_FONT_16_1);
-    //
-    // Initialization of 'StepNum'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_2);
-    SPINBOX_SetFont(hItem, GUI_FONT_16_1);
-    //
-    // Initialization of 'Step'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
-    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
-    TEXT_SetFont(hItem, GUI_FONT_16_1);
-    //
     // Initialization of 'DelayNum'
     //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_3);
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
     SPINBOX_SetFont(hItem, GUI_FONT_16_1);
     //
     // Initialization of 'Delay'
     //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_3);
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
     TEXT_SetFont(hItem, GUI_FONT_16_1);
     TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
     //
-    // Initialization of 'DrawTemp'
+    // Initialization of 'Launch'
     //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_CHECKBOX_0);
-    CHECKBOX_SetText(hItem, "Temp");
-    CHECKBOX_SetFont(hItem, GUI_FONT_16_1);
-    CHECKBOX_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
-    //
-    // Initialization of 'OnOff'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_CHECKBOX_1);
-    CHECKBOX_SetText(hItem, "Cont.");
-    CHECKBOX_SetFont(hItem, GUI_FONT_16_1);
-    CHECKBOX_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
-    //
-    // Initialization of 'Listview'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0);
-    LISTVIEW_AddColumn(hItem, 30, "FOV", GUI_TA_HCENTER | GUI_TA_VCENTER);
-    LISTVIEW_AddColumn(hItem, 30, "Time", GUI_TA_HCENTER | GUI_TA_VCENTER);
-    LISTVIEW_AddColumn(hItem, 20, "C", GUI_TA_HCENTER | GUI_TA_VCENTER);
-    LISTVIEW_AddColumn(hItem, 20, "R", GUI_TA_HCENTER | GUI_TA_VCENTER);
-    LISTVIEW_AddColumn(hItem, 32, "Temp", GUI_TA_HCENTER | GUI_TA_VCENTER);
-    LISTVIEW_AddColumn(hItem, 30, "%", GUI_TA_HCENTER | GUI_TA_VCENTER);
-    LISTVIEW_AddRow(hItem, NULL);
-    LISTVIEW_SetGridVis(hItem, 1);
-    LISTVIEW_SetHeaderHeight(hItem, 13);
-    LISTVIEW_SetRowHeight(hItem, 14);
-    LISTVIEW_SetFont(hItem, GUI_FONT_4X6);
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_2);
+    BUTTON_SetFont(hItem, GUI_FONT_16B_1);
     // USER START (Optionally insert additional code for further widget initialization)
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
-    //SPINBOX_SetValue(hItem, row_count);
+    SPINBOX_SetValue(hItem, freq);
     SPINBOX_SetRange(hItem, 1, 255);
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_1);
-    //SPINBOX_SetValue(hItem, col_count);
-    SPINBOX_SetRange(hItem, 1, 255);
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_2);
-    //SPINBOX_SetValue(hItem, servo_step);
-    SPINBOX_SetRange(hItem, 1, 255);
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_3);
-    //SPINBOX_SetValue(hItem, servo_delay);
-    SPINBOX_SetRange(hItem, 0, 255);
-    SPINBOX_SetStep(hItem, 5);
-    
-    listview = WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_0);
-    SLIDER_SetRange(hItem, 0, 50);
+    SLIDER_SetRange(hItem, -50, 50);
     SLIDER_SetValue(hItem, 20);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_1);
-    SLIDER_SetRange(hItem, 0, 50);
+    SLIDER_SetRange(hItem, -50, 50);
     SLIDER_SetValue(hItem, 35);
     
     // USER END
@@ -261,37 +155,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     Id    = WM_GetId(pMsg->hWinSrc);
     NCode = pMsg->Data.v;
     switch(Id) {
-    case ID_BUTTON_0: // Notifications sent by '1 Scan'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        //scan_enabled_once = 1;
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_BUTTON_1: // Notifications sent by 'Detect'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        //scan_detector_enabled = !scan_detector_enabled;
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_BUTTON_2: // Notifications sent by 'Clear'
+    case ID_BUTTON_0: // Notifications sent by 'Clear'
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
@@ -306,11 +170,11 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       // USER END
       }
       break;
-    case ID_BUTTON_3: // Notifications sent by 'Save'
+    case ID_BUTTON_1: // Notifications sent by 'Save'
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
-        //need_to_save = 1;
+        need_to_save = 1;
         // USER END
         break;
       case WM_NOTIFICATION_RELEASED:
@@ -321,7 +185,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       // USER END
       }
       break;
-    case ID_SPINBOX_0: // Notifications sent by 'RowsNum'
+    case ID_SPINBOX_0: // Notifications sent by 'DelayNum'
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
@@ -338,139 +202,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  //row_count = SPINBOX_GetValue(hItem);
-        //drawParams();
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_SPINBOX_1: // Notifications sent by 'ColsNum'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_MOVED_OUT:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_VALUE_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-        hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  //col_count = SPINBOX_GetValue(hItem);
-        //drawParams();
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_SPINBOX_2: // Notifications sent by 'StepNum'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_MOVED_OUT:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_VALUE_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-        hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  //servo_step = SPINBOX_GetValue(hItem);
-        //drawParams();
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_SPINBOX_3: // Notifications sent by 'DelayNum'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_MOVED_OUT:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_VALUE_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-        hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  //servo_delay = SPINBOX_GetValue(hItem);
-        //drawParams();
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_CHECKBOX_0: // Notifications sent by 'DrawTemp'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_VALUE_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-        drawT = !drawT;
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_CHECKBOX_1: // Notifications sent by 'OnOff'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_VALUE_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-        scan_enabled = !scan_enabled;
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_LISTVIEW_0: // Notifications sent by 'Listview'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_SEL_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
+    	  freq = SPINBOX_GetValue(hItem);
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)
@@ -513,6 +245,21 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
         T_MAX = SLIDER_GetValue(hItem);
         need_to_redraw = 1;
+        // USER END
+        break;
+      // USER START (Optionally insert additional code for further notification handling)
+      // USER END
+      }
+      break;
+    case ID_BUTTON_2: // Notifications sent by 'Launch'
+      switch(NCode) {
+      case WM_NOTIFICATION_CLICKED:
+        // USER START (Optionally insert code for reacting on notification message)
+        scan_enabled =! scan_enabled;
+        // USER END
+        break;
+      case WM_NOTIFICATION_RELEASED:
+        // USER START (Optionally insert code for reacting on notification message)
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)

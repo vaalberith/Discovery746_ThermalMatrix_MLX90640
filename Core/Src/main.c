@@ -136,15 +136,31 @@ static void MX_SDMMC1_SD_Init(void);
 #define SDRAM_ADDR_START_SCREENSHOT 0xC0300000
 #define SDRAM_ADDR_START_CAM 0xC0500000
 
+#define  FPS2HZ   0x02
+#define  FPS4HZ   0x03
+#define  FPS8HZ   0x04
+#define  FPS16HZ  0x05
+#define  FPS32HZ  0x06
+
+#define  MLX90640_ADDR 0x33
+#define	 RefreshRate FPS8HZ 
+#define  TA_SHIFT 8 //Default shift for MLX90640 in open air
+
+static uint16_t eeMLX90640[832];  
+static float mlx90640To[768];
+uint16_t frame[834];
+float emissivity=0.95;
+int status;
+uint8_t freq = FPS8HZ;
+
 //
 
-uint16_t T_MIN = 20;
-uint16_t T_MAX = 35;
+float T_MIN = 20;
+float T_MAX = 35;
 
 //
 
 WM_HWIN CreateWindow(void);
-void setListViewData(uint8_t index, char *str);
 
 //
 
@@ -378,7 +394,7 @@ void drawLegend(float t_min, float t_max)
   
   float temp = 0;
   
-  for (uint32_t i = 0; i < 256; i++)
+  for (int32_t i = 0; i < 256; i++)
   {
     temp = t_max - (float)i*k;
     
@@ -388,7 +404,7 @@ void drawLegend(float t_min, float t_max)
     
     if ((i % 20 == 0) || i == 255)
     {
-      snprintf(str, sizeof(str), "%+.1f°", temp);
+      snprintf(str, sizeof(str), "%.1f°", temp);
       drawText(str, 15, i+8, GUI_WHITE, &GUI_Font8_1);
     }
   }
@@ -541,22 +557,6 @@ void makePrintScreen()
   SD_busy = 0;
 }
 
-#define  FPS2HZ   0x02
-#define  FPS4HZ   0x03
-#define  FPS8HZ   0x04
-#define  FPS16HZ  0x05
-#define  FPS32HZ  0x06
-
-#define  MLX90640_ADDR 0x33
-#define	 RefreshRate FPS8HZ 
-#define  TA_SHIFT 8 //Default shift for MLX90640 in open air
-
-static uint16_t eeMLX90640[832];  
-static float mlx90640To[768];
-uint16_t frame[834];
-float emissivity=0.95;
-int status;
-
 /* USER CODE END 0 */
 
 /**
@@ -662,12 +662,20 @@ int main(void)
       need_to_clear = 0;
       GUI_Clear();
       drawLegend(T_MIN, T_MAX);
+      
+      HAL_Delay(10);
     }
     if (need_to_redraw)
     {
       need_to_redraw = 0;
       GUI_Clear();
       drawLegend(T_MIN, T_MAX);
+      
+      for (int j = 0; j < row_count; j++)
+        for (int i = 0; i < col_count; i++)
+          drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
+      
+      HAL_Delay(10);
     }    
     if (need_to_save)
     {
@@ -675,16 +683,17 @@ int main(void)
       saveCfg();
     }
     
-    int status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
-		float Vdd = MLX90640_GetVdd(frame, &mlx90640);
-		float Ta = MLX90640_GetTa(frame, &mlx90640);
-		float Tr = Ta - TA_SHIFT;
-		MLX90640_CalculateTo(frame, &mlx90640, emissivity , Tr, mlx90640To);
-    
-    
-    for (int j = 0; j < row_count; j++)
-      for (int i = 0; i < col_count; i++)
-        drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
+    if (scan_enabled)
+    {
+      MLX90640_GetFrameData(MLX90640_ADDR, frame);
+      float Ta = MLX90640_GetTa(frame, &mlx90640);
+      float Tr = Ta - TA_SHIFT;
+      MLX90640_CalculateTo(frame, &mlx90640, emissivity , Tr, mlx90640To);
+      for (int j = 0; j < row_count; j++)
+        for (int i = 0; i < col_count; i++)
+          drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
+    }
+      
     
   }
     
