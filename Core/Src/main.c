@@ -68,7 +68,6 @@
 #include "DIALOG.h"
 
 #include "MLX90640_API.h"
-#include "math.h"
 
 /* USER CODE END Includes */
 
@@ -547,14 +546,8 @@ void makePrintScreen()
 }
 
 void cfgMLX()
-{
-  float r_freq = pow(2.0, freq)/2.0;
-  snprintf(str, sizeof(str), "%1.f Hz", r_freq);
-  GUI_SelectLayer(1);
-  drawText(str, 100, 140, GUI_RED, &GUI_Font6x8);
-  GUI_SelectLayer(0);
-  
-  if (!chess_mode)
+{ 
+  if (chess_mode)
     MLX90640_SetChessMode(MLX90640_ADDR);
   else
     MLX90640_SetInterleavedMode(MLX90640_ADDR);

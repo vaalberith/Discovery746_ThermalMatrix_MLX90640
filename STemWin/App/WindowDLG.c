@@ -20,6 +20,7 @@
 
 // USER START (Optionally insert additional includes)
 #include "main.h"
+#include "math.h"
 // USER END
 
 #include "DIALOG.h"
@@ -34,10 +35,11 @@
 #define ID_BUTTON_0              (GUI_ID_USER + 0x01)
 #define ID_BUTTON_1              (GUI_ID_USER + 0x02)
 #define ID_SPINBOX_0             (GUI_ID_USER + 0x03)
-#define ID_SLIDER_0             (GUI_ID_USER + 0x05)
-#define ID_SLIDER_1             (GUI_ID_USER + 0x06)
-#define ID_BUTTON_2             (GUI_ID_USER + 0x07)
-#define ID_CHECKBOX_0            (GUI_ID_USER + 0x08)
+#define ID_SLIDER_0             (GUI_ID_USER + 0x04)
+#define ID_SLIDER_1             (GUI_ID_USER + 0x05)
+#define ID_BUTTON_2             (GUI_ID_USER + 0x06)
+#define ID_CHECKBOX_0            (GUI_ID_USER + 0x07)
+#define ID_TEXT_0            (GUI_ID_USER + 0x08)
 
 
 // USER START (Optionally insert additional defines)
@@ -78,6 +80,7 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { SLIDER_CreateIndirect, "SliderH", ID_SLIDER_1, 0, 225, 75, 23, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Launch", ID_BUTTON_2, 0, 0, 75, 40, 0, 0x0, 0 },
   { CHECKBOX_CreateIndirect, "Chess", ID_CHECKBOX_0, 0, 170, 80, 20, 0, 0x0, 0 },
+  { TEXT_CreateIndirect, "Hz", ID_TEXT_0, 10, 140, 36, 20, 0, 0x0, 0 },
   // USER START (Optionally insert additional widgets)
   // USER END
 };
@@ -137,6 +140,12 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     CHECKBOX_SetText(hItem, "Chess");
     CHECKBOX_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
     CHECKBOX_SetFont(hItem, GUI_FONT_16B_1);
+    //
+    // Initialization of 'Hz'
+    //
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
+    TEXT_SetFont(hItem, GUI_FONT_16_1);
+    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00000000));
     // USER START (Optionally insert additional code for further widget initialization)
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_CHECKBOX_0);
@@ -208,6 +217,13 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
     	  freq = SPINBOX_GetValue(hItem);
+        
+        float r_freq = pow(2.0, (float)freq)/2.0;
+        char str[8] = {0};
+        snprintf(str, sizeof(str), "%1.1f", r_freq);
+        hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
+        TEXT_SetText(hItem, str);
+        
         need_to_cfg = 1;
         // USER END
         break;
@@ -284,7 +300,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
         break;
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
-        chess_mode = !chess_mode;
+        hItem = WM_GetDialogItem(pMsg->hWin, Id);
+        chess_mode = CHECKBOX_IsChecked(hItem);
         need_to_cfg = 1;
         // USER END
         break;
