@@ -196,6 +196,9 @@ const float sq_size_y = 11.2f;
 const uint16_t start_x = 120;
 const uint16_t start_y = 0;
 
+int watch_col = 0;
+int watch_row = 0;
+void temp_setlabel(char *str);
 
 //
 
@@ -414,18 +417,33 @@ void drawLegend(float t_min, float t_max)
   }
 }
 
+void setlabelTemp()
+{
+  float temp = 0;
+  temp = mlx90640To[watch_row*col_count+(col_count-watch_col -1)];
+  snprintf(str, sizeof(str), "%.1f°", temp);
+  temp_setlabel(str);
+}
+
 //
 
 void handleTouch(uint16_t x, uint16_t y)
 {  
-  float temp = 0;
+  watch_col = (int)((x - start_x) / sq_size_x + 0.5f);
+  watch_row = (int)((y - start_y) / sq_size_y + 0.5f);
   
-  int col = (int)((x - start_x) / sq_size_x + 0.5f);
-  int row = (int)((y - start_y) / sq_size_y + 0.5f);
-  
-  if (col < 0 || row < 0 || col >= col_count || row >= row_count)
+  if (watch_col < 0 || watch_row < 0 || watch_col >= col_count || watch_row >= row_count)
     return;
   
+  setlabelTemp();
+      
+  //int x1 = (int)(start_x + (watch_col + 0.5f)*sq_size_x);
+  //int y1 = (int)(start_y + (watch_row + 0.5f)*sq_size_y);
+  
+  //GUI_SelectLayer(1);
+  //GUI_Clear();
+  //drawText("*", x1, y1, GUI_WHITE, &GUI_Font4x6);
+  //GUI_SelectLayer(0);
 }
 
 //
@@ -709,9 +727,11 @@ int main(void)
       for (int j = 0; j < row_count; j++)
         for (int i = 0; i < col_count; i++)
           drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
-    }
       
-    
+      if (watch_col < 0 || watch_row < 0 || watch_col >= col_count || watch_row >= row_count)
+        continue;
+      setlabelTemp();
+    }
   }
     
   

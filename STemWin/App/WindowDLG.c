@@ -31,15 +31,16 @@
 *
 **********************************************************************
 */
-#define ID_WINDOW_0              (GUI_ID_USER + 0x00)
-#define ID_BUTTON_0              (GUI_ID_USER + 0x01)
-#define ID_BUTTON_1              (GUI_ID_USER + 0x02)
-#define ID_SPINBOX_0             (GUI_ID_USER + 0x03)
-#define ID_SLIDER_0             (GUI_ID_USER + 0x04)
-#define ID_SLIDER_1             (GUI_ID_USER + 0x05)
-#define ID_BUTTON_2             (GUI_ID_USER + 0x06)
-#define ID_CHECKBOX_0            (GUI_ID_USER + 0x07)
-#define ID_TEXT_0            (GUI_ID_USER + 0x08)
+#define ID_WINDOW_0 (GUI_ID_USER + 0x00)
+#define ID_BUTTON_0 (GUI_ID_USER + 0x01)
+#define ID_BUTTON_1 (GUI_ID_USER + 0x02)
+#define ID_SPINBOX_0 (GUI_ID_USER + 0x03)
+#define ID_SLIDER_0 (GUI_ID_USER + 0x04)
+#define ID_SLIDER_1 (GUI_ID_USER + 0x05)
+#define ID_BUTTON_2 (GUI_ID_USER + 0x06)
+#define ID_CHECKBOX_0 (GUI_ID_USER + 0x07)
+#define ID_TEXT_0 (GUI_ID_USER + 0x08)
+#define ID_TEXT_1 (GUI_ID_USER + 0x09)
 
 
 // USER START (Optionally insert additional defines)
@@ -65,6 +66,13 @@ extern uint8_t need_to_cfg;
 extern float T_MIN;
 extern float T_MAX;
 
+WM_HWIN temp_text_inst;
+
+void temp_setlabel(char *str)
+{
+  TEXT_SetText(temp_text_inst, str);
+}
+
 // USER END
 
 /*********************************************************************
@@ -75,12 +83,13 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 50, 0, 75, 272, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Clear", ID_BUTTON_0, 0, 40, 75, 40, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Save", ID_BUTTON_1, 0, 85, 75, 26, 0, 0x0, 0 },
-  { SPINBOX_CreateIndirect, "DelayNum", ID_SPINBOX_0, 0, 129, 75, 40, 0, 0x0, 0 },
+  { SPINBOX_CreateIndirect, "DelayNum", ID_SPINBOX_0, 0, 149, 75, 40, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderL", ID_SLIDER_0, 0, 250, 75, 23, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderH", ID_SLIDER_1, 0, 225, 75, 23, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Launch", ID_BUTTON_2, 0, 0, 75, 40, 0, 0x0, 0 },
-  { CHECKBOX_CreateIndirect, "Chess", ID_CHECKBOX_0, 0, 170, 80, 20, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Hz", ID_TEXT_0, 10, 140, 36, 20, 0, 0x0, 0 },
+  { CHECKBOX_CreateIndirect, "Chess", ID_CHECKBOX_0, 0, 195, 80, 20, 0, 0x0, 0 },
+  { TEXT_CreateIndirect, "Hz", ID_TEXT_0, 10, 160, 36, 20, 0, 0x0, 0 },
+  { TEXT_CreateIndirect, "Temp", ID_TEXT_1, 10, 115, 55, 30, 0, 0x0, 0 },
   // USER START (Optionally insert additional widgets)
   // USER END
 };
@@ -146,7 +155,15 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
     TEXT_SetFont(hItem, GUI_FONT_16_1);
     TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00000000));
+    //
+    // Initialization of 'Temp'
+    //
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
+    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
+    TEXT_SetFont(hItem, GUI_FONT_16B_1);
     // USER START (Optionally insert additional code for further widget initialization)
+    
+    temp_text_inst = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_CHECKBOX_0);
     CHECKBOX_SetState(hItem, chess_mode);
