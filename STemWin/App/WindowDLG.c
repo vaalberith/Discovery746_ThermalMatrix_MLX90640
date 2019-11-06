@@ -62,8 +62,8 @@ extern uint8_t need_to_clear;
 extern uint8_t need_to_redraw;
 extern uint8_t need_to_save;
 extern uint8_t need_to_cfg;
-extern uint16_t T_MIN;
-extern uint16_t T_MAX;
+extern float T_MIN;
+extern float T_MAX;
 
 // USER END
 

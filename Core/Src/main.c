@@ -640,7 +640,7 @@ int main(void)
   //GUI_SelectLayer(0);
   
   cfgMLX();
-  HAL_Delay(10);
+  HAL_Delay(100);
   
   while(1)
   {
@@ -698,6 +698,7 @@ int main(void)
       
       HAL_Delay(10);
     }
+    
     if (scan_enabled)
     {
       MLX90640_GetFrameData(MLX90640_ADDR, frame);
