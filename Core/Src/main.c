@@ -636,7 +636,7 @@ void makePrintScreen()
 #define  FPS32HZ  0x06
 
 #define  MLX90640_ADDR 0x33
-#define	 RefreshRate FPS16HZ 
+#define	 RefreshRate FPS8HZ 
 #define  TA_SHIFT 8 //Default shift for MLX90640 in open air
 
 static uint16_t eeMLX90640[832];  
@@ -726,6 +726,11 @@ int main(void)
   
   
   col_count = 32;
+  row_count = 32;
+  
+  calcPixelSizePos();
+  
+  col_count = 32;
   row_count = 24;
   
   MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
@@ -733,23 +738,8 @@ int main(void)
 	paramsMLX90640 mlx90640;
   status = MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
   status = MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
-  GUI_SelectLayer(0);
-  while(1)
-  {
-  
-    int status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
-		float vdd = MLX90640_GetVdd(frame, &mlx90640);
-		float Ta = MLX90640_GetTa(frame, &mlx90640);
+  //GUI_SelectLayer(0);
 
-		float tr = Ta - TA_SHIFT;
-		MLX90640_CalculateTo(frame, &mlx90640, emissivity , tr, mlx90640To);
-    
-    
-    for (int j = 0; j < row_count; j++)
-      for (int i = 0; i < col_count; i++)
-        drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
-
-  }
   
   while(1)
   {
@@ -791,6 +781,18 @@ int main(void)
       need_to_save = 0;
       saveCfg();
     }
+    
+    int status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
+		float vdd = MLX90640_GetVdd(frame, &mlx90640);
+		float Ta = MLX90640_GetTa(frame, &mlx90640);
+
+		float tr = Ta - TA_SHIFT;
+		MLX90640_CalculateTo(frame, &mlx90640, emissivity , tr, mlx90640To);
+    
+    
+    for (int j = 0; j < row_count; j++)
+      for (int i = 0; i < col_count; i++)
+        drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
     
   }
     

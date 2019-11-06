@@ -944,7 +944,7 @@
                     <item>frame</item>
                     <item>mlx90640</item>
                     <item>mlx90640To</item>
-                    <item></item>
+                    <item />
                 </expressions>
                 <col-names>
                     <item>Expression</item>
