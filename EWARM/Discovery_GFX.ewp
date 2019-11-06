@@ -1067,13 +1067,13 @@
             <group>
                 <name>Core</name>
                 <file>
-                    <name>$PROJ_DIR$\..\Core\Src\bme280.c</name>
-                </file>
-                <file>
                     <name>$PROJ_DIR$\..\Core\Src\main.c</name>
                 </file>
                 <file>
-                    <name>$PROJ_DIR$\..\Core\Src\ov7670.c</name>
+                    <name>$PROJ_DIR$\..\Core\Src\MLX90640_API.c</name>
+                </file>
+                <file>
+                    <name>$PROJ_DIR$\..\Core\Src\MLX90640_I2C_Driver.c</name>
                 </file>
                 <file>
                     <name>$PROJ_DIR$\..\Core\Src\stm32f7xx_hal_msp.c</name>
@@ -1198,12 +1198,6 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\Drivers\STM32F7xx_HAL_Driver\Src\stm32f7xx_hal_crc_ex.c</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\Drivers\STM32F7xx_HAL_Driver\Src\stm32f7xx_hal_dcmi.c</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\Drivers\STM32F7xx_HAL_Driver\Src\stm32f7xx_hal_dcmi_ex.c</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\Drivers\STM32F7xx_HAL_Driver\Src\stm32f7xx_hal_dma.c</name>

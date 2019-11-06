@@ -67,9 +67,7 @@
 #include "WM.h"
 #include "DIALOG.h"
 
-#include "ov7670.h"
-
-#include "bme280.h"
+#include "MLX90640_API.h"
 
 /* USER CODE END Includes */
 
@@ -92,16 +90,11 @@
 
 CRC_HandleTypeDef hcrc;
 
-DCMI_HandleTypeDef hdcmi;
-DMA_HandleTypeDef hdma_dcmi;
-
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c3;
 
 SD_HandleTypeDef hsd1;
 
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
@@ -113,17 +106,13 @@ UART_HandleTypeDef huart1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_CRC_Init(void);
 extern void GRAPHICS_HW_Init(void);
 extern void GRAPHICS_Init(void);
 extern void GRAPHICS_MainTask(void);
 static void MX_I2C1_Init(void);
-static void MX_TIM1_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_DCMI_Init(void);
 static void MX_I2C3_Init(void);
 static void MX_SDMMC1_SD_Init(void);
 /* USER CODE BEGIN PFP */
@@ -149,7 +138,7 @@ static void MX_SDMMC1_SD_Init(void);
 
 //
 
-#define PYRO_I2C_ADDR 0x00
+#define PYRO_I2C_ADDR 0x33<<1
 
 uint16_t T_MIN = 20;
 uint16_t T_MAX = 35;
@@ -214,12 +203,6 @@ uint8_t need_to_save = 0;
 uint16_t prev_col = 0;
 uint16_t prev_row = 0;
 uint16_t measures_done = 0;
-
-//
-
-const uint16_t servo_mid = 300;
-const uint16_t servo_left = 200;
-const uint16_t servo_right = 400;
 
 //
 
@@ -361,93 +344,6 @@ void PollTouchScreen()
 
 //
 
-typedef enum
-{
-  X = 0x00U,
-  Y = 0x01U,
-  XY = 0x02U
-} SERVO_AXIS;
-
-void setPWMDuty(TIM_HandleTypeDef *tim, uint32_t pulse)
-{
-  tim->Instance->CCR1 = pulse;
-}
-
-void Servo_Set(SERVO_AXIS axis, uint8_t x, uint8_t y)
-{
-  if (axis != X)
-    setPWMDuty(&htim1, servo_mid - servo_step*((row_count/2) - y));
-  if (axis != Y)
-    setPWMDuty(&htim2, servo_mid + servo_step*((col_count/2) - x));
-}
-
-//
-
-uint8_t SMBus_CRC8(uint8_t *_data)
-{
-  uint32_t data = ((uint32_t)_data[0] << 16) | ((uint32_t)_data[1] << 8) | _data[2];
-	uint32_t msg = data << 8;
-	uint32_t key = 0x107 << 23;
-	uint32_t mask = 1 << 31;
-	while(mask > 0x80) 
-  {
-		if(mask & msg) 
-    {
-			msg ^= key;
-		}
-		key >>= 1;
-		mask >>= 1;
-	}
-	return msg;
-}
-
-uint16_t MLX_Read_EEPROM(I2C_HandleTypeDef *hi2c, uint8_t i2caddr, uint8_t regaddr)
-{
-  uint8_t buffer[2] = {0};
-  uint8_t addr = regaddr | (1 << 5);
-  HAL_I2C_Mem_Read(hi2c, i2caddr<<1, addr, 1, buffer, 2, 100);
-  HAL_Delay(10);
-  return (buffer[1] << 8 | buffer[0]);
-}
-
-void MLX_Write_EEPROM(I2C_HandleTypeDef *hi2c, uint8_t i2caddr, uint8_t regaddr, uint16_t data)
-{
-  uint8_t buffer[4] = {0,0,0,0};
-  uint8_t addr = regaddr | (1 << 5);
-  buffer[0] = addr;
-  buffer[3] = SMBus_CRC8(buffer);
-  // erase
-  HAL_I2C_Mem_Write(hi2c, i2caddr<<1, addr, 1, &buffer[1], 3, 1000);
-  HAL_Delay(100);
-  // write
-  buffer[0] = addr;
-  buffer[1] = (uint8_t)data;
-  buffer[2] = (uint8_t)(data >> 8);
-  buffer[3] = SMBus_CRC8(buffer);
-  HAL_I2C_Mem_Write(hi2c, i2caddr<<1, addr, 1, &buffer[1], 3, 1000);
-  HAL_Delay(100);
-}
-
-uint16_t MLX_Read_RAM(I2C_HandleTypeDef *hi2c, uint8_t i2caddr, uint8_t regaddr)
-{
-  uint8_t buffer[2];
-  uint16_t val = 0;
-  HAL_I2C_Mem_Read(hi2c, i2caddr<<1, regaddr, 1, buffer, 2, 100);
-  val = (buffer[1] << 8 | buffer[0]);
-  return val;
-}
-
-float MLX_Read_Value(I2C_HandleTypeDef *hi2c, uint8_t i2caddr)
-{
-  float temperature = 0;
-  uint16_t val = 0;
-  val = MLX_Read_RAM(hi2c, i2caddr, 0x07);
-  temperature =  val * 0.02f - 273.15f;
-  return temperature;
-}
-
-//
-
 void drawText(char *str, int x, int y, GUI_COLOR color, const GUI_FONT *font)
 {
   GUI_SetColor(color);
@@ -575,55 +471,6 @@ void writeTemp(float temp)
   setListViewData(4, str);
 }
 
-float work(uint8_t col, uint8_t row, float t_min, float t_max)
-{
-  if (need_to_clear)
-    return 0;
-  
-  Servo_Set(X, col, 0);
-      
-  HAL_Delay(servo_delay);
-  
-  float temp = MLX_Read_Value(&hi2c1, PYRO_I2C_ADDR);
-  
-  drawPixel(col, row, temp, t_min, t_max, drawT);
-  
-  SDRAM_WriteFloat(temp, col, row);
-  
-  writeColRow(col, row);
-  
-  uint8_t percent = (uint8_t)((++measures_done * 100.0f) / (row_count*col_count));
-  snprintf(str, sizeof(str), "%d", percent);
-  setListViewData(5, str);
-  
-  if ((prev_col == col) && (prev_row == row))
-  {
-    writeTemp(temp);
-  }
-  
-  return temp;
-}
-
-void scanDraw(float t_min, float t_max)
-{ 
-  uint32_t col = 0, row = 0;
-  
-  measures_done = 0;
-  
-  for (row = 0; row < row_count; row++)
-  {
-    Servo_Set(Y, 0, row);
-    
-    if (row % 2 == 0)
-      for (col = 0; col < col_count; col++)
-        work(col, row, t_min, t_max);
-    else
-      for (col = col_count-1; col < col_count; col--)
-        work(col, row, t_min, t_max);
-  }
-  scan_enabled_once = 0;
-}
-
 //
 
 void handleTouch(uint16_t x, uint16_t y)
@@ -639,7 +486,6 @@ void handleTouch(uint16_t x, uint16_t y)
   if (col < 0 || row < 0 || col >= col_count || row >= row_count)
     return;
   
-  Servo_Set(XY, col, row);
   
   // refresh prev
   
@@ -783,161 +629,16 @@ void makePrintScreen()
   SD_busy = 0;
 }
 
-uint16_t ov_buf[176*144+10];
-
-GUI_CONST_STORAGE GUI_BITMAP bmgraphicmemory = 
-{
-  176, // xSize
-  144, // ySize
-  352, // BytesPerLine
-  16, // BitsPerPixel
-  (unsigned char *)ov_buf,
-  NULL,
-  GUI_DRAW_BMP565
-};
-
-uint32_t rgb565to8888(uint16_t pixel)
-{
-  uint32_t argb = 0;
-  uint8_t alpha = 0xFF;
-  uint8_t r = (pixel >> 11) & 0x1F;
-  uint8_t g = (pixel >> 5) & 0x3F;
-  uint8_t b = pixel & 0x1F;
-  argb = (alpha << 24) | (r << 16) | (g << 8) | b;
-  return argb;
-}
-
-// 
-
-void searchRoutine(float t_min, float t_max)
-{
-  uint32_t col = col_count/2;
-  float temp = 0, prev_temp = 0;
-  uint8_t dir_inc = 1;
-  
-  while (scan_detector_enabled)
-  {
-      temp = work(col, row_count/2, t_min, t_max);
-      if (temp < t_max)
-      {
-          if (dir_inc)
-          {
-            col++;
-            if (col > col_count)
-            {
-              col = col_count - 1;
-              dir_inc = 0;
-            }
-          }
-          else
-          {
-            if (col == 0)
-            {
-              col = 1;
-              dir_inc = 1;
-            }
-            else
-              col--;
-          }
-          
-          /*if (prev_temp > temp)
-            dir_inc = !dir_inc;*/
-      }
-      prev_temp = temp;
-  }
-}
-
-// BME
-
-struct bme280_dev dev;
-
-void user_delay_ms(uint32_t period)
-{
-  HAL_Delay(period);
-}
-
-int8_t user_i2c_read(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
-{
-  HAL_I2C_Master_Transmit(&hi2c1, id, &reg_addr, 1, 1000);
-  HAL_Delay(10);
-  HAL_I2C_Master_Receive(&hi2c1, id, data, len, 1000);
-  return 0;
-}
-
-int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
-{
-  uint8_t * buf;
-  buf = (uint8_t*)malloc(len + 1);
-  buf[0] = reg_addr;
-  memcpy(buf +1, data, len);
-  HAL_I2C_Master_Transmit(&hi2c1, id, buf, len + 1, 1000);
-  free(buf);
-  return 0;
-}
-
-void BME280_data_forced_mode(struct bme280_dev *dev, struct bme280_data *comp_data)
-{
-    uint8_t settings_sel;
-
-    /* Recommended mode of operation: Indoor navigation */
-    dev->settings.osr_h = BME280_OVERSAMPLING_1X;
-    dev->settings.osr_p = BME280_OVERSAMPLING_16X;
-    dev->settings.osr_t = BME280_OVERSAMPLING_2X;
-    dev->settings.filter = BME280_FILTER_COEFF_16;
-
-    settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-
-    bme280_set_sensor_settings(settings_sel, dev);
-    
-    bme280_set_sensor_mode(BME280_FORCED_MODE, dev);
-    
-    dev->delay_ms(40);
-    
-    bme280_get_sensor_data(BME280_ALL, comp_data, dev);
-}
-
-uint8_t BME280_API_init(uint8_t addr)
-{
-  //dev.dev_id = BME280_I2C_ADDR_PRIM << 1;
-  //dev.dev_id = BME280_I2C_ADDR_SEC << 1;
-  dev.dev_id = addr << 1;
-  dev.intf = BME280_I2C_INTF;
-  dev.read = user_i2c_read;
-  dev.write = user_i2c_write;
-  dev.delay_ms = user_delay_ms;
-
-  return bme280_init(&dev);
-}
-
-void check_mlx()
-{
-  uint16_t default_cfg = 0xB775;
-  uint16_t new_cfg = 0xB374;
-  uint16_t mlx_curr = MLX_Read_EEPROM(&hi2c1, PYRO_I2C_ADDR, 0x05);
-  if (mlx_curr != new_cfg)
-    MLX_Write_EEPROM(&hi2c1, PYRO_I2C_ADDR, 0x05, new_cfg);
-  if (mlx_curr != new_cfg)
-  {
-    drawText("PYRO ERROR", 200, 100, GUI_WHITE, &GUI_Font8x16);
-    
-    BME280_API_init(BME280_I2C_ADDR_PRIM);
-    struct bme280_data comp_data;
-    uint8_t bmeData[32]; // BME data ascii
-    int32_t temperature;
-    uint32_t humidity;
-    uint32_t pressure;
-    
-    while(1)
-    {
-      BME280_data_forced_mode(&dev, &comp_data);
-      temperature = comp_data.temperature;
-      humidity = comp_data.humidity;
-      pressure = comp_data.pressure;
-      snprintf((char*)bmeData, sizeof(bmeData), "   %.2f\° %.1f\%% %d P   ", (float)temperature / 100, (float)humidity / 1024, pressure);
-      drawText((char*)bmeData, 100, 100, GUI_WHITE, &GUI_Font8x16);
-    }
-  }
-}
+static uint16_t eeMLX90640[832];
+float emissivity = 1;
+uint16_t frame[834];
+static float image[768];
+float eTa;
+static uint16_t data[768*sizeof(float)];
+static float mlx90640To[768];
+int subpage;
+paramsMLX90640 mlx90640;
+int refreshrate = 0;
 
 /* USER CODE END 0 */
 
@@ -976,14 +677,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_CRC_Init();
   MX_I2C1_Init();
-  MX_TIM1_Init();
-  MX_TIM2_Init();
   MX_TIM3_Init();
   MX_USART1_UART_Init();
-  MX_DCMI_Init();
   MX_I2C3_Init();
   MX_SDMMC1_SD_Init();
   MX_USB_DEVICE_Init();
@@ -999,11 +696,6 @@ int main(void)
   
   TouchTimer_Init();
   
-  Servo_Set(XY, col_count/2, row_count/2);
-  
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-  
   GRAPHICS_HW_Init();
   GRAPHICS_Init();
   
@@ -1018,44 +710,41 @@ int main(void)
   
   //
   HAL_Delay(100);
-  check_mlx();
-  HAL_Delay(100);
   
   CreateWindow();
-  
+  HAL_Delay(100);
   drawLegend(T_MIN, T_MAX);
+  HAL_Delay(100);
   drawParams();
+  HAL_Delay(100);
   
-  //HAL_GPIO_WritePin(DCMI_PWR_EN_GPIO_Port, DCMI_PWR_EN_Pin, GPIO_PIN_SET);
   
-  //ov7670_Init(0, &hdcmi);
   
-  //HAL_DCMI_ConfigCROP(&hdcmi,0,0,480*2,272);
-  //HAL_DCMI_EnableCROP(&hdcmi);
-  //HAL_DCMI_Start_DMA(&hdcmi, DCMI_MODE_CONTINUOUS, layer1_StartAddr, 176*144*2);
   
-  //HAL_DCMI_Start_DMA(&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)ov_buf, 176*144/2);
-  //HAL_DCMI_Start_DMA(&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)SDRAM_ADDR_START_CAM, 176*144*2);
+  MLX90640_DumpEE(PYRO_I2C_ADDR, eeMLX90640);
+  MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
+  HAL_Delay(10);
+  refreshrate = MLX90640_GetRefreshRate(PYRO_I2C_ADDR);
+  HAL_Delay(10);
   
-  /*for (int i = 0; i < 200*200;i++)
-    *(__IO uint32_t*)(layer1_StartAddr+i*4) = 0xAAAAAAAA;*/
+  while(1)
+  {
+  
+    MLX90640_GetFrameData(PYRO_I2C_ADDR, frame);
+
+    eTa = MLX90640_GetTa(frame, &mlx90640);
+    subpage = MLX90640_GetSubPageNumber(frame);
+    MLX90640_CalculateTo(frame, &mlx90640, emissivity, eTa, mlx90640To);
+
+    MLX90640_BadPixelsCorrection((&mlx90640)->brokenPixels, mlx90640To, 1, &mlx90640);
+    //MLX90640_BadPixelsCorrection((&mlx90640)->outlierPixels, mlx90640To, 1, &mlx90640);
+    
+    HAL_Delay(100);
+  }
   
   while(1)
   {
     HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
-    
-    /*GUI_SelectLayer(1);
-    GUI_Clear();
-    HAL_Delay(10);
-    GUI_DrawBitmap(&bmgraphicmemory , 300, 0);
-    HAL_Delay(500);
-    GUI_SelectLayer(0);*/
-  
-    /*for (uint32_t i = 0; i < 144; i++)
-      for (uint32_t j = 0; j < 176; j++)
-      {
-        *(__IO uint32_t*)(layer1_StartAddr+(i*176+j)*4) = rgb565to8888(ov_buf[i*176+j]);
-      }*/
     
     if (HAL_GPIO_ReadPin(B_USER_GPIO_Port, B_USER_Pin))
     {
@@ -1094,11 +783,6 @@ int main(void)
       saveCfg();
     }
     
-    if (scan_enabled || scan_enabled_once)
-      scanDraw(T_MIN, T_MAX);
-    
-    if (scan_detector_enabled)
-      searchRoutine(T_MIN, T_MAX);
   }
     
   
@@ -1216,43 +900,6 @@ static void MX_CRC_Init(void)
 }
 
 /**
-  * @brief DCMI Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_DCMI_Init(void)
-{
-
-  /* USER CODE BEGIN DCMI_Init 0 */
-
-  /* USER CODE END DCMI_Init 0 */
-
-  /* USER CODE BEGIN DCMI_Init 1 */
-
-  /* USER CODE END DCMI_Init 1 */
-  hdcmi.Instance = DCMI;
-  hdcmi.Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
-  hdcmi.Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
-  hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_HIGH;
-  hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_LOW;
-  hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
-  hdcmi.Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-  hdcmi.Init.JPEGMode = DCMI_JPEG_DISABLE;
-  hdcmi.Init.ByteSelectMode = DCMI_BSM_ALL;
-  hdcmi.Init.ByteSelectStart = DCMI_OEBS_ODD;
-  hdcmi.Init.LineSelectMode = DCMI_LSM_ALL;
-  hdcmi.Init.LineSelectStart = DCMI_OELS_ODD;
-  if (HAL_DCMI_Init(&hdcmi) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN DCMI_Init 2 */
-
-  /* USER CODE END DCMI_Init 2 */
-
-}
-
-/**
   * @brief I2C1 Initialization Function
   * @param None
   * @retval None
@@ -1268,7 +915,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00C0EAFF;
+  hi2c1.Init.Timing = 0x0020081F;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -1373,125 +1020,6 @@ static void MX_SDMMC1_SD_Init(void)
 }
 
 /**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 999;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 3999;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
-  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-  sBreakDeadTimeConfig.BreakFilter = 0;
-  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
-  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-  sBreakDeadTimeConfig.Break2Filter = 0;
-  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-  HAL_TIM_MspPostInit(&htim1);
-
-}
-
-/**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM2_Init(void)
-{
-
-  /* USER CODE BEGIN TIM2_Init 0 */
-
-  /* USER CODE END TIM2_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-
-  /* USER CODE BEGIN TIM2_Init 1 */
-
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 499;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 3999;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM2_Init 2 */
-
-  /* USER CODE END TIM2_Init 2 */
-  HAL_TIM_MspPostInit(&htim2);
-
-}
-
-/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -1569,22 +1097,6 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
-
-}
-
-/** 
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void) 
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA2_Stream1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 3, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
 
 }
 
@@ -1668,6 +1180,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF8_SPDIFRX;
   HAL_GPIO_Init(SPDIF_RX0_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : ARDUINO_PWM_D9_Pin */
+  GPIO_InitStruct.Pin = ARDUINO_PWM_D9_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
+  HAL_GPIO_Init(ARDUINO_PWM_D9_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : DCMI_D6_Pin DCMI_D7_Pin */
+  GPIO_InitStruct.Pin = DCMI_D6_Pin|DCMI_D7_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
   /*Configure GPIO pin : QSPI_NCS_Pin */
   GPIO_InitStruct.Pin = QSPI_NCS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -1711,6 +1239,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(OTG_FS_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : DCMI_D5_Pin */
+  GPIO_InitStruct.Pin = DCMI_D5_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
+  HAL_GPIO_Init(DCMI_D5_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : ARDUINO_D7_Pin ARDUINO_D8_Pin LCD_DISP_Pin */
   GPIO_InitStruct.Pin = ARDUINO_D7_Pin|ARDUINO_D8_Pin|LCD_DISP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -1730,6 +1266,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LCD_BL_CTRL_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DCMI_VSYNC_Pin */
+  GPIO_InitStruct.Pin = DCMI_VSYNC_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
+  HAL_GPIO_Init(DCMI_VSYNC_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OTG_FS_OverCurrent_Pin */
   GPIO_InitStruct.Pin = OTG_FS_OverCurrent_Pin;
@@ -1758,6 +1302,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DCMI_PWR_EN_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : DCMI_D4_Pin DCMI_D3_Pin DCMI_D0_Pin DCMI_D2_Pin 
+                           DCMI_D1_Pin */
+  GPIO_InitStruct.Pin = DCMI_D4_Pin|DCMI_D3_Pin|DCMI_D0_Pin|DCMI_D2_Pin 
+                          |DCMI_D1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
+  HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
+
   /*Configure GPIO pin : ARDUINO_PWM_CS_D5_Pin */
   GPIO_InitStruct.Pin = ARDUINO_PWM_CS_D5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -1771,6 +1325,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B_USER_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ARDUINO_PWM_D10_Pin */
+  GPIO_InitStruct.Pin = ARDUINO_PWM_D10_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF1_TIM1;
+  HAL_GPIO_Init(ARDUINO_PWM_D10_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LCD_INT_Pin */
   GPIO_InitStruct.Pin = LCD_INT_Pin;
@@ -1860,6 +1422,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ARDUINO_A0_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : DCMI_HSYNC_Pin PA6 */
+  GPIO_InitStruct.Pin = DCMI_HSYNC_Pin|GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_CLK_Pin ULPI_D0_Pin */
   GPIO_InitStruct.Pin = ULPI_CLK_Pin|ULPI_D0_Pin;
