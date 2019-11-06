@@ -138,8 +138,6 @@ static void MX_SDMMC1_SD_Init(void);
 
 //
 
-#define PYRO_I2C_ADDR 0x33<<1
-
 uint16_t T_MIN = 20;
 uint16_t T_MAX = 35;
 
@@ -173,36 +171,24 @@ uint8_t SD_busy = 0;
 
 char str[40] = {0};
 
-float sq_size_x = 27;
-float sq_size_y = 27;
+const float sq_size_x = 11.2f;
+const float sq_size_y = 11.2f;
 
-uint16_t start_x = 220;
-uint16_t start_y = 14;
+const uint16_t start_x = 120;
+const uint16_t start_y = 0;
 
-float temp_temperature = 0;
 
 //
 
 uint8_t drawT = 0;
 
-uint8_t row_count = 11;
-uint8_t col_count = 11;
-
-uint8_t servo_step = 5;
-uint8_t servo_delay = 20;
+uint8_t row_count = 24;
+uint8_t col_count = 32;
 
 uint8_t scan_enabled = 0;
-uint8_t scan_enabled_once = 0;
-uint8_t scan_detector_enabled = 0;
 uint8_t need_to_clear = 0;
 uint8_t need_to_redraw = 0;
 uint8_t need_to_save = 0;
-
-//
-
-uint16_t prev_col = 0;
-uint16_t prev_row = 0;
-uint16_t measures_done = 0;
 
 //
 
@@ -276,37 +262,17 @@ void WriteToFlash(uint32_t address, uint32_t value)
 
 void saveCfg()
 {
-  uint32_t data = ((uint32_t)servo_delay << 24) | ((uint32_t)servo_step << 16) | ((uint32_t)col_count << 8) | row_count;
-  WriteToFlash(FLASH_USER_START_ADDR, data);
+  //uint32_t data = ((uint32_t)servo_delay << 24) | ((uint32_t)servo_step << 16) | ((uint32_t)col_count << 8) | row_count;
+  //WriteToFlash(FLASH_USER_START_ADDR, data);
 }
 
 void readCfg()
 {
-  uint32_t cfg = *(__IO uint32_t *)FLASH_USER_START_ADDR;
+  /*uint32_t cfg = *(__IO uint32_t *)FLASH_USER_START_ADDR;
   row_count = (uint8_t)cfg;
   col_count = cfg >> 8;
   servo_step = cfg >> 16;
-  servo_delay = cfg >> 24;
-}
-
-float SDRAM_ReadFloat(int col, int row)
-{
-  uint32_t _temp = 0;
-  float temp = 0;
-  uint8_t t_bytes[4];
-  
-  _temp =  (*(__IO uint32_t *)(SDRAM_ADDR_START_VALS + (row * row_count + col)*4));
-  *(uint32_t*)(t_bytes) = _temp;
-  temp = *(float*)(t_bytes);
-  
-  return temp;
-}
-
-void SDRAM_WriteFloat(float temp, int col, int row)
-{
-  uint8_t t_bytes[4];
-  *(float*)t_bytes = temp;
-  *(__IO uint32_t *)(SDRAM_ADDR_START_VALS + (row * row_count + col)*4) = *(uint32_t*)t_bytes;
+  servo_delay = cfg >> 24;*/
 }
 
 //
@@ -404,33 +370,6 @@ void drawPixel(int col, int row, float temp, float t_min, float t_max, uint8_t d
 
 //
 
-void calcPixelSizePos()
-{
-  sq_size_x = (int)(270.0f / col_count);
-  sq_size_y = (int)(270.0f / row_count);
-  
-  start_x = (int)(210 + sq_size_x / 2.0f);
-  start_y = (int)(sq_size_y / 2.0f);
-}
-
-void calcTimeFOV()
-{
-  uint8_t fovX = (uint8_t)(col_count*(servo_step*0.42f));
-  uint8_t fovY = (uint8_t)(row_count*(servo_step*0.42f));
-  snprintf(str, sizeof(str), "%dx%d", fovX, fovY);
-  setListViewData(0, str);
-  
-  float timeS = row_count*col_count*(servo_delay/1000.0f);
-  snprintf(str, sizeof(str), "%.2f", timeS);
-  setListViewData(1, str);
-}
-
-void drawParams()
-{
-  calcPixelSizePos();  
-  calcTimeFOV();
-}
-
 void drawLegend(float t_min, float t_max)
 {
   uint32_t color = 0;
@@ -475,9 +414,6 @@ void writeTemp(float temp)
 
 void handleTouch(uint16_t x, uint16_t y)
 {  
-  if (scan_enabled || scan_enabled_once)
-    return;
-
   float temp = 0;
   
   int col = (int)((x - start_x) / sq_size_x + 0.5f);
@@ -486,30 +422,6 @@ void handleTouch(uint16_t x, uint16_t y)
   if (col < 0 || row < 0 || col >= col_count || row >= row_count)
     return;
   
-  
-  // refresh prev
-  
-  temp = SDRAM_ReadFloat(prev_col, prev_row);
-  
-  drawPixel(prev_col, prev_row, temp, T_MIN, T_MAX, drawT);
-  
-  // draw new
-  
-  int _x = (int)(start_x + col*sq_size_x);
-  int _y = (int)(start_y + row*sq_size_y);
-  GUI_SetTextMode(GUI_TEXTMODE_TRANS);
-  drawText("*", _x, _y, GUI_WHITE, &GUI_Font4x6);
-  GUI_SetTextMode(GUI_TEXTMODE_NORMAL);
-  
-  // text info
-  
-  temp = SDRAM_ReadFloat(col, row);
-  
-  writeColRow(col, row);
-  writeTemp(temp);
-  
-  prev_col = col;
-  prev_row = row;
 }
 
 //
@@ -716,22 +628,12 @@ int main(void)
   
   //
   HAL_Delay(100);
-  
   CreateWindow();
   HAL_Delay(100);
   drawLegend(T_MIN, T_MAX);
   HAL_Delay(100);
-  drawParams();
-  HAL_Delay(100);
+
   
-  
-  col_count = 32;
-  row_count = 32;
-  
-  calcPixelSizePos();
-  
-  col_count = 32;
-  row_count = 24;
   
   MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
 	MLX90640_SetChessMode(MLX90640_ADDR);
@@ -760,21 +662,12 @@ int main(void)
       need_to_clear = 0;
       GUI_Clear();
       drawLegend(T_MIN, T_MAX);
-      drawParams();
     }
     if (need_to_redraw)
     {
       need_to_redraw = 0;
       GUI_Clear();
       drawLegend(T_MIN, T_MAX);
-      drawParams();
-      for (uint8_t y = 0; y < row_count; y++)
-        for (uint8_t x = 0; x < col_count; x++)
-        {
-          temp_temperature = SDRAM_ReadFloat(x, y);
-          drawPixel(x, y, temp_temperature, T_MIN, T_MAX, drawT);
-        }
-      
     }    
     if (need_to_save)
     {
@@ -783,11 +676,10 @@ int main(void)
     }
     
     int status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
-		float vdd = MLX90640_GetVdd(frame, &mlx90640);
+		float Vdd = MLX90640_GetVdd(frame, &mlx90640);
 		float Ta = MLX90640_GetTa(frame, &mlx90640);
-
-		float tr = Ta - TA_SHIFT;
-		MLX90640_CalculateTo(frame, &mlx90640, emissivity , tr, mlx90640To);
+		float Tr = Ta - TA_SHIFT;
+		MLX90640_CalculateTo(frame, &mlx90640, emissivity , Tr, mlx90640To);
     
     
     for (int j = 0; j < row_count; j++)

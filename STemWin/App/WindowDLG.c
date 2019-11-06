@@ -61,19 +61,10 @@
 */
 
 // USER START (Optionally insert additional static data)
-void drawParams();
 
 extern uint8_t drawT;
 
-extern uint8_t row_count;
-extern uint8_t col_count;
-
-extern uint8_t servo_step;
-extern uint8_t servo_delay;
-
 extern uint8_t scan_enabled;
-extern uint8_t scan_enabled_once;
-extern uint8_t scan_detector_enabled;
 extern uint8_t need_to_clear;
 extern uint8_t need_to_redraw;
 extern uint8_t need_to_save;
@@ -241,16 +232,16 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     // USER START (Optionally insert additional code for further widget initialization)
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
-    SPINBOX_SetValue(hItem, row_count);
+    //SPINBOX_SetValue(hItem, row_count);
     SPINBOX_SetRange(hItem, 1, 255);
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_1);
-    SPINBOX_SetValue(hItem, col_count);
+    //SPINBOX_SetValue(hItem, col_count);
     SPINBOX_SetRange(hItem, 1, 255);
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_2);
-    SPINBOX_SetValue(hItem, servo_step);
+    //SPINBOX_SetValue(hItem, servo_step);
     SPINBOX_SetRange(hItem, 1, 255);
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_3);
-    SPINBOX_SetValue(hItem, servo_delay);
+    //SPINBOX_SetValue(hItem, servo_delay);
     SPINBOX_SetRange(hItem, 0, 255);
     SPINBOX_SetStep(hItem, 5);
     
@@ -274,7 +265,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
-        scan_enabled_once = 1;
+        //scan_enabled_once = 1;
         // USER END
         break;
       case WM_NOTIFICATION_RELEASED:
@@ -289,7 +280,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
-        scan_detector_enabled = !scan_detector_enabled;
+        //scan_detector_enabled = !scan_detector_enabled;
         // USER END
         break;
       case WM_NOTIFICATION_RELEASED:
@@ -319,7 +310,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
-        need_to_save = 1;
+        //need_to_save = 1;
         // USER END
         break;
       case WM_NOTIFICATION_RELEASED:
@@ -347,8 +338,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  row_count = SPINBOX_GetValue(hItem);
-        drawParams();
+    	  //row_count = SPINBOX_GetValue(hItem);
+        //drawParams();
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)
@@ -372,8 +363,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  col_count = SPINBOX_GetValue(hItem);
-        drawParams();
+    	  //col_count = SPINBOX_GetValue(hItem);
+        //drawParams();
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)
@@ -397,8 +388,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  servo_step = SPINBOX_GetValue(hItem);
-        drawParams();
+    	  //servo_step = SPINBOX_GetValue(hItem);
+        //drawParams();
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)
@@ -422,8 +413,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  servo_delay = SPINBOX_GetValue(hItem);
-        drawParams();
+    	  //servo_delay = SPINBOX_GetValue(hItem);
+        //drawParams();
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)

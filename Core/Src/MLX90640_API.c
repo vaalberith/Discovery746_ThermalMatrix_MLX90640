@@ -734,10 +734,6 @@ void ExtractGainParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
     int16_t gainEE;
     
     gainEE = eeData[48];
-    if(gainEE > 32767)
-    {
-        gainEE = gainEE -65536;
-    }
     
     mlx90640->gainEE = gainEE;    
 }
@@ -913,7 +909,7 @@ void ExtractAlphaParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
     for(int i = 0; i < 768; i++)
     {
         temp = alphaTemp[i] * pow(2,(double)alphaScale);        
-        mlx90640->alpha[i] = (temp + 0.5);        
+        mlx90640->alpha[i] = (temp + 0.5f);        
         
     } 
     
@@ -938,10 +934,6 @@ void ExtractOffsetParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
     occColumnScale = (eeData[16] & 0x00F0) >> 4;
     occRowScale = (eeData[16] & 0x0F00) >> 8;
     offsetRef = eeData[17];
-    if (offsetRef > 32767)
-    {
-        offsetRef = offsetRef - 65536;
-    }
     
     for(int i = 0; i < 6; i++)
     {
@@ -1010,31 +1002,15 @@ void ExtractKtaPixelParameters(uint16_t *eeData, paramsMLX90640 *mlx90640)
     float temp;
     
     KtaRoCo = (eeData[54] & 0xFF00) >> 8;
-    if (KtaRoCo > 127)
-    {
-        KtaRoCo = KtaRoCo - 256;
-    }
     KtaRC[0] = KtaRoCo;
     
     KtaReCo = (eeData[54] & 0x00FF);
-    if (KtaReCo > 127)
-    {
-        KtaReCo = KtaReCo - 256;
-    }
     KtaRC[2] = KtaReCo;
       
     KtaRoCe = (eeData[55] & 0xFF00) >> 8;
-    if (KtaRoCe > 127)
-    {
-        KtaRoCe = KtaRoCe - 256;
-    }
     KtaRC[1] = KtaRoCe;
       
     KtaReCe = (eeData[55] & 0x00FF);
-    if (KtaReCe > 127)
-    {
-        KtaReCe = KtaReCe - 256;
-    }
     KtaRC[3] = KtaReCe;
   
     ktaScale1 = ((eeData[56] & 0x00F0) >> 4) + 8;

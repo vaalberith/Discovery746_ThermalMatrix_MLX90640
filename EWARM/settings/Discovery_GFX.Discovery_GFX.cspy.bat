@@ -25,7 +25,7 @@ if not "%~1" == "" goto debugFile
 
 @echo on 
 
-"D:\ProgramFiles\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
+"D:\Program Files\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
 
 @echo off 
 goto end 
@@ -34,7 +34,7 @@ goto end
 
 @echo on 
 
-"D:\ProgramFiles\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" "--debug_file=%~1" --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
+"D:\Program Files\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" "--debug_file=%~1" --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
 
 @echo off 
 :end
