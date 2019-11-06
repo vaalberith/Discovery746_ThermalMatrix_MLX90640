@@ -60,7 +60,7 @@ DMA2D_HandleTypeDef           hdma2d;
 
 SDRAM_HandleTypeDef hsdram1;
 
-#define REFRESH_COUNT        1642
+#define REFRESH_COUNT        1647
 
 #define SDRAM_TIMEOUT                            ((uint32_t)0xFFFF)
 #define SDRAM_MODEREG_BURST_LENGTH_1             ((uint16_t)0x0000)

@@ -629,16 +629,15 @@ void makePrintScreen()
   SD_busy = 0;
 }
 
-static uint16_t eeMLX90640[832];
-float emissivity = 1;
-uint16_t frame[834];
-static float image[768];
-float eTa;
-static uint16_t data[768*sizeof(float)];
+#define  MLX90640_ADDR 0x33
+#define	 RefreshRate FPS16HZ 
+#define  TA_SHIFT 8 //Default shift for MLX90640 in open air
+
+static uint16_t eeMLX90640[832];  
 static float mlx90640To[768];
-int subpage;
-paramsMLX90640 mlx90640;
-int refreshrate = 0;
+uint16_t frame[834];
+float emissivity=0.95;
+int status;
 
 /* USER CODE END 0 */
 
@@ -719,27 +718,44 @@ int main(void)
   HAL_Delay(100);
   
   
+  col_count = 32;
+  row_count = 24;
+  calcPixelSizePos();
   
-  
-  MLX90640_DumpEE(PYRO_I2C_ADDR, eeMLX90640);
-  MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
-  HAL_Delay(10);
-  refreshrate = MLX90640_GetRefreshRate(PYRO_I2C_ADDR);
-  HAL_Delay(10);
+  //MLX90640_SetRefreshRate(MLX90640_ADDR, RefreshRate);
+	MLX90640_SetChessMode(MLX90640_ADDR);
+	paramsMLX90640 mlx90640;
+  status = MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
+  if (status != 0) printf("\r\nload system parameters error with code:%d\r\n",status);
+  status = MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
+  if (status != 0) printf("\r\nParameter extraction failed with error code:%d\r\n",status);
   
   while(1)
   {
   
-    MLX90640_GetFrameData(PYRO_I2C_ADDR, frame);
+    int status = MLX90640_GetFrameData(MLX90640_ADDR, frame);
+		float vdd = MLX90640_GetVdd(frame, &mlx90640);
+		float Ta = MLX90640_GetTa(frame, &mlx90640);
 
-    eTa = MLX90640_GetTa(frame, &mlx90640);
-    subpage = MLX90640_GetSubPageNumber(frame);
-    MLX90640_CalculateTo(frame, &mlx90640, emissivity, eTa, mlx90640To);
-
-    MLX90640_BadPixelsCorrection((&mlx90640)->brokenPixels, mlx90640To, 1, &mlx90640);
-    //MLX90640_BadPixelsCorrection((&mlx90640)->outlierPixels, mlx90640To, 1, &mlx90640);
+		float tr = Ta - TA_SHIFT;
+		MLX90640_CalculateTo(frame, &mlx90640, emissivity , tr, mlx90640To);
     
-    HAL_Delay(100);
+    /*printf("\r\n");
+    printf("\r\n");
+    for(int i = 0; i < 768; i++)
+    {
+			if(i%32 == 0 && i != 0)
+      {
+				printf("\r\n");
+			}
+			printf("%2.2f ",mlx90640To[i]);
+		}
+    printf("\r\n");
+    printf("\r\n");
+    HAL_Delay(500);*/
+    for (int j = 0; j < row_count; j++)
+      for (int i = 0; i < col_count; i++)
+        drawPixel(i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
   }
   
   while(1)
@@ -915,7 +931,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x0020081F;
+  hi2c1.Init.Timing = 0x00401959;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
