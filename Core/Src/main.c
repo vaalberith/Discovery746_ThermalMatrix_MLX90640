@@ -705,8 +705,14 @@ int main(void)
   GRAPHICS_Init();
   
   layer0_StartAddr = hltdc.LayerCfg[0].FBStartAdress;
+  layer1_StartAddr = hltdc.LayerCfg[1].FBStartAdress;
   
   GUI_Clear();
+  GUI_SelectLayer(1);
+  GUI_SetBkColor(GUI_TRANSPARENT);
+  GUI_Clear();
+  GUI_SelectLayer(0);
+
   
   //
   HAL_Delay(100);
@@ -727,7 +733,7 @@ int main(void)
 	paramsMLX90640 mlx90640;
   status = MLX90640_DumpEE(MLX90640_ADDR, eeMLX90640);
   status = MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
-  
+  GUI_SelectLayer(0);
   while(1)
   {
   
@@ -738,9 +744,11 @@ int main(void)
 		float tr = Ta - TA_SHIFT;
 		MLX90640_CalculateTo(frame, &mlx90640, emissivity , tr, mlx90640To);
     
+    
     for (int j = 0; j < row_count; j++)
       for (int i = 0; i < col_count; i++)
-        drawPixel(i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
+        drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
+
   }
   
   while(1)
