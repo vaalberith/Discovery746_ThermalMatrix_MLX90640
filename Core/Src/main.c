@@ -145,25 +145,39 @@ static void MX_SDMMC1_SD_Init(void);
 #define  FPS32HZ  0x06
 
 #define  MLX90640_ADDR 0x33
-#define  TA_SHIFT 8 //Default shift for MLX90640 in open air
+#define  TA_SHIFT 8
 
+paramsMLX90640 mlx90640;
 uint16_t eeMLX90640[832];  
-float mlx90640To[768];
 uint16_t frame[834];
-float emissivity=0.95;
+float mlx90640To[768];
+uint32_t pixel_data[768];
+
+float emissivity = 0.95;
 uint8_t freq = FPS8HZ;
 uint8_t chess_mode = 1;
 
-#define SCALE_FACTOR 4
+#define SCALE_FACTOR 2
 
-uint32_t pixel_data[768];
+//const float sq_size_xy = 11.2f;
+const float sq_size_xy = 5.6f;
 
-paramsMLX90640 mlx90640;
+typedef struct 
+{
+  uint32_t *pixels;
+  unsigned int w;
+  unsigned int h;
+} image_t;
+
+image_t image_orig = {pixel_data, 32, 24};
+image_t image_scaled = {(uint32_t*)SDRAM_ADDR_START_SCALE, 32*SCALE_FACTOR, 24*SCALE_FACTOR};
+
+#define getByte(value, n) (value >> (n*8) & 0xFF)
 
 //
 
-float T_MIN = 20;
-float T_MAX = 35;
+float T_MIN_param = 20;
+float T_MAX_param = 35;
 
 //
 
@@ -194,31 +208,73 @@ uint8_t SD_busy = 0;
 
 char str[40] = {0};
 
-const float sq_size_x = 11.2f;
-const float sq_size_y = 11.2f;
-
-//const float sq_size_x = 2.8f;
-//const float sq_size_y = 2.8f;
-
 const uint16_t start_x = 120;
 const uint16_t start_y = 0;
 
-int watch_col = 0;
-int watch_row = 0;
+uint16_t watch_x = 0;
+uint16_t watch_y = 0;
+
 void temp_setlabel(char *str);
 
 //
-
-uint8_t drawT = 0;
-
-uint8_t row_count = 24;
-uint8_t col_count = 32;
 
 uint8_t scan_enabled = 0;
 uint8_t need_to_clear = 0;
 uint8_t need_to_redraw = 0;
 uint8_t need_to_save = 0;
 uint8_t need_to_cfg = 0;
+
+//
+ 
+uint32_t getpixel(image_t *image, uint16_t x, uint16_t y)
+{
+  return image->pixels[(y*image->w)+x];
+}
+
+float lerp(float s, float e, float t)
+{
+  return s+(e-s)*t;
+}
+
+float blerp(float c00, float c10, float c01, float c11, float tx, float ty)
+{
+  return lerp(lerp(c00, c10, tx), lerp(c01, c11, tx), ty);
+}
+
+void putpixel(image_t *image, uint16_t x, uint16_t y, uint32_t color)
+{
+  image->pixels[(y*image->w) + x] = color;
+}
+
+void scale(image_t *src, image_t *dst, float scalex, float scaley)
+{
+  uint16_t newWidth = (uint16_t)src->w*scalex;
+  uint16_t newHeight= (uint16_t)src->h*scaley;
+  uint16_t x, y;
+  for(x = 0, y = 0; y < newHeight; x++)
+  {
+    if(x > newWidth)
+    {
+        x = 0; y++;
+    }
+    float gx = x / (float)(newWidth) * (src->w-1);
+    float gy = y / (float)(newHeight) * (src->h-1);
+    uint16_t gxi = (uint16_t)gx;
+    uint16_t gyi = (uint16_t)gy;
+    uint32_t result=0;
+    uint32_t c00 = getpixel(src, gxi, gyi);
+    uint32_t c10 = getpixel(src, gxi+1, gyi);
+    uint32_t c01 = getpixel(src, gxi, gyi+1);
+    uint32_t c11 = getpixel(src, gxi+1, gyi+1);
+    
+    for(uint8_t i = 0; i < 3; i++)
+    {
+        //((uint8_t*)&result)[i] = blerp( ((uint8_t*)&c00)[i], ((uint8_t*)&c10)[i], ((uint8_t*)&c01)[i], ((uint8_t*)&c11)[i], gxi - gx, gyi - gy); // this is shady
+        result |= (uint8_t)blerp(getByte(c00, i), getByte(c10, i), getByte(c01, i), getByte(c11, i), gx - gxi, gy -gyi) << (8*i);
+    }
+    putpixel(dst,x, y, result);
+  }
+}
 
 //
 
@@ -332,15 +388,15 @@ void PollTouchScreen()
       TS_State.Pressed = 0;
       GUI_PID_StoreState(&TS_State);
       ts_press_cnt=0;
+      
+      handleTouch(ts.touchX[0], ts.touchY[0]);
     }
   }
-  GUI_Exec();
-  handleTouch(ts.touchX[0], ts.touchY[0]);
 }
 
 //
 
-void drawText(char *str, int x, int y, GUI_COLOR color, const GUI_FONT *font)
+void drawText(char *str, uint16_t x, uint16_t y, GUI_COLOR color, const GUI_FONT *font)
 {
   GUI_SetColor(color);
   GUI_SetFont(font);
@@ -376,12 +432,12 @@ uint32_t temp_to_rgb(float temp, float t_min, float t_max)
   return rgb;
 }
 
-void drawPixel(int col, int row, uint32_t color)
+void drawPixel(uint16_t col, uint16_t row, uint32_t color)
 {
-  int x1 = (int)(start_x + col*sq_size_x);
-  int y1 = (int)(start_y + row*sq_size_y);
-  int x2 = (int)(start_x + (col+1)*sq_size_x);
-  int y2 = (int)(start_y + (row+1)*sq_size_y);
+  uint16_t x1 = (uint16_t)(start_x + col*sq_size_xy);
+  uint16_t y1 = (uint16_t)(start_y + row*sq_size_xy);
+  uint16_t x2 = (uint16_t)(start_x + (col+1)*sq_size_xy);
+  uint16_t y2 = (uint16_t)(start_y + (row+1)*sq_size_xy);
   
   GUI_SetColor(color);
   GUI_FillRect(x1, y1, x2, y2);
@@ -397,7 +453,7 @@ void drawLegend(float t_min, float t_max)
   
   float temp = 0;
   
-  for (int32_t i = 0; i < 256; i++)
+  for (uint16_t i = 0; i < 256; i++)
   {
     temp = t_max - (float)i*k;
     
@@ -416,7 +472,7 @@ void drawLegend(float t_min, float t_max)
 void setlabelTemp()
 {
   float temp = 0;
-  temp = mlx90640To[watch_row*col_count+(col_count-watch_col -1)];
+  temp = mlx90640To[watch_y * image_orig.w + (image_orig.w - watch_x - 1)];
   snprintf(str, sizeof(str), "%.1f°", temp);
   temp_setlabel(str);
 }
@@ -425,21 +481,20 @@ void setlabelTemp()
 
 void handleTouch(uint16_t x, uint16_t y)
 {  
-  watch_col = (int)((x - start_x) / sq_size_x + 0.5f);
-  watch_row = (int)((y - start_y) / sq_size_y + 0.5f);
+  watch_x = (uint16_t)((x - start_x) / (sq_size_xy*SCALE_FACTOR*1.0f));
+  watch_y = (uint16_t)((y - start_y) / (sq_size_xy*SCALE_FACTOR*1.0f));
   
-  if (watch_col < 0 || watch_row < 0 || watch_col >= col_count || watch_row >= row_count)
+  if (watch_x >= image_orig.w || watch_y >= image_orig.h)
     return;
   
   setlabelTemp();
-      
-  //int x1 = (int)(start_x + (watch_col + 0.5f)*sq_size_x);
-  //int y1 = (int)(start_y + (watch_row + 0.5f)*sq_size_y);
   
-  //GUI_SelectLayer(1);
-  //GUI_Clear();
-  //drawText("*", x1, y1, GUI_WHITE, &GUI_Font4x6);
-  //GUI_SelectLayer(0);
+  uint16_t _x = (uint16_t)(start_x + watch_x*sq_size_xy*SCALE_FACTOR*1.0f);
+  uint16_t _y = (uint16_t)(start_y + watch_y*sq_size_xy*SCALE_FACTOR*1.0f);
+  GUI_SelectLayer(1);
+  GUI_Clear();
+  drawText("*", _x, _y, GUI_WHITE, &GUI_Font8_1);
+  GUI_SelectLayer(0);
 }
 
 //
@@ -465,27 +520,6 @@ void drawBMP(char *name, int x0, int y0, int Num, int Denom)
   SD_busy = 0;
 }
 
-uint16_t from_ascii_dec(char *source)
-{
-  uint8_t i = 0;
-  uint16_t ans = 0;
-  uint16_t mul = 1;
-  
-  for (i = 0; i < 100; i++)
-  {
-    if ((source[i] > 0x39) || (source[i] < 0x30))
-      break;
-  }
-  
-  for (uint8_t j = i; j > 0; j--)
-  {
-    ans += (source[j-1] - 0x30) * mul;
-    mul *= 10;
-  }
-  
-  return ans;
-}
-
 void generateFileNameIncBetter(char *name, char *ext, char *new_name)
 {
   char newname[40] = {0};
@@ -503,7 +537,7 @@ void generateFileNameIncBetter(char *name, char *ext, char *new_name)
 
   while (fr == FR_OK && fno.fname[0])
   {
-    temp_index = from_ascii_dec(&fno.fname[strlen(name) + 1]);
+    temp_index = atoi(&fno.fname[strlen(name) + 1]);
     if (temp_index > index)
       index = temp_index;
     fr = f_findnext(&dj, &fno);
@@ -575,69 +609,24 @@ void cfgMLX()
     
 }
 
-typedef struct 
+void handleMLXdata()
 {
-  uint32_t *pixels;
-  unsigned int w;
-  unsigned int h;
-} image_t;
+  for (uint16_t i = 0; i < image_orig.h * image_orig.w; i++)
+    pixel_data[i] = temp_to_rgb(mlx90640To[i], T_MIN_param, T_MAX_param);
+      
+  scale(&image_orig, &image_scaled, SCALE_FACTOR, SCALE_FACTOR);
 
-#define getByte(value, n) (value >> (n*8) & 0xFF)
- 
-uint32_t getpixel(image_t *image, uint32_t x, uint32_t y)
-{
-  return image->pixels[(y*image->w)+x];
-}
-
-float lerp(float s, float e, float t)
-{
-  return s+(e-s)*t;
-}
-
-float blerp(float c00, float c10, float c01, float c11, float tx, float ty)
-{
-  return lerp(lerp(c00, c10, tx), lerp(c01, c11, tx), ty);
-}
-
-void putpixel(image_t *image, uint32_t x, uint32_t y, uint32_t color)
-{
-  image->pixels[(y*image->w) + x] = color;
-}
-
-void scale(image_t *src, image_t *dst, float scalex, float scaley)
-{
-  int newWidth = (int)src->w*scalex;
-  int newHeight= (int)src->h*scaley;
-  int x, y;
-  for(x = 0, y = 0; y < newHeight; x++)
-  {
-    if(x > newWidth)
+  for (int j = 0; j < image_scaled.h; j++)
+    for (int i = 0; i < image_scaled.w; i++)
     {
-        x = 0; y++;
+        drawPixel(image_scaled.w - 1 - i, j, image_scaled.pixels[j * image_scaled.w + i]);
     }
-    float gx = x / (float)(newWidth) * (src->w-1);
-    float gy = y / (float)(newHeight) * (src->h-1);
-    int gxi = (int)gx;
-    int gyi = (int)gy;
-    uint32_t result=0;
-    uint32_t c00 = getpixel(src, gxi, gyi);
-    uint32_t c10 = getpixel(src, gxi+1, gyi);
-    uint32_t c01 = getpixel(src, gxi, gyi+1);
-    uint32_t c11 = getpixel(src, gxi+1, gyi+1);
-    
-    for(uint8_t i = 0; i < 3; i++)
-    {
-        //((uint8_t*)&result)[i] = blerp( ((uint8_t*)&c00)[i], ((uint8_t*)&c10)[i], ((uint8_t*)&c01)[i], ((uint8_t*)&c11)[i], gxi - gx, gyi - gy); // this is shady
-        result |= (uint8_t)blerp(getByte(c00, i), getByte(c10, i), getByte(c01, i), getByte(c11, i), gx - gxi, gy -gyi) << (8*i);
-    }
-    putpixel(dst,x, y, result);
-  }
+
+  if (watch_x >= image_orig.w || watch_y >= image_orig.h)
+    return;
+
+  setlabelTemp();
 }
-
-
-
-image_t a = {pixel_data, 32, 24};
-image_t b = {(uint32_t*)SDRAM_ADDR_START_SCALE, 32*SCALE_FACTOR, 24*SCALE_FACTOR};
 
 /* USER CODE END 0 */
 
@@ -713,10 +702,8 @@ int main(void)
   HAL_Delay(10);
   CreateWindow();
   HAL_Delay(10);
-  drawLegend(T_MIN, T_MAX);
+  drawLegend(T_MIN_param, T_MAX_param);
   HAL_Delay(10);
-  
-  //GUI_SelectLayer(0);
   
   cfgMLX();
   HAL_Delay(100);
@@ -725,12 +712,14 @@ int main(void)
   {
     HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
     
+    GUI_Exec();
+    
     if (HAL_GPIO_ReadPin(B_USER_GPIO_Port, B_USER_Pin))
     {
       USBD_Stop(&hUsbDeviceFS);
       makePrintScreen();
       GUI_Clear();
-      drawLegend(T_MIN, T_MAX);
+      drawLegend(T_MIN_param, T_MAX_param);
       drawBMP(last_name, 210, 0, 1, 2);
       drawText(last_name, 210, 200, GUI_WHITE, &GUI_Font6x8);
       USBD_Start(&hUsbDeviceFS);
@@ -742,7 +731,7 @@ int main(void)
       HAL_Delay(10);
       
       GUI_Clear();
-      drawLegend(T_MIN, T_MAX);
+      drawLegend(T_MIN_param, T_MAX_param);
       
       HAL_Delay(10);
     }
@@ -753,14 +742,9 @@ int main(void)
       HAL_Delay(10);
       
       GUI_Clear();
-      drawLegend(T_MIN, T_MAX);
+      drawLegend(T_MIN_param, T_MAX_param);
       
-      for (int j = 0; j < row_count; j++)
-        for (int i = 0; i < col_count; i++)
-        {
-            uint32_t color = temp_to_rgb(mlx90640To[j*col_count+i], T_MIN, T_MAX);
-            drawPixel(col_count - 1 - i, j, color);
-        }
+      handleMLXdata();
       
       HAL_Delay(10);
     }    
@@ -788,21 +772,7 @@ int main(void)
       float Tr = Ta - TA_SHIFT;
       MLX90640_CalculateTo(frame, &mlx90640, emissivity , Tr, mlx90640To);
       
-      for (int i = 0; i < 768; i++)
-        pixel_data[i] = temp_to_rgb(mlx90640To[i], T_MIN, T_MAX);
-      
-      scale(&a, &b, SCALE_FACTOR, SCALE_FACTOR);
-      
-      for (int j = 0; j < a.h; j++)
-        for (int i = 0; i < a.w; i++)
-        {
-            drawPixel(a.w - 1 - i, j, a.pixels[j*a.w+i]);
-        }
-      
-      if (watch_col < 0 || watch_row < 0 || watch_col >= col_count || watch_row >= row_count)
-        continue;
-      
-      setlabelTemp();
+      handleMLXdata();
     }
   }
     

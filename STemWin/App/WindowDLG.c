@@ -56,15 +56,14 @@
 // USER START (Optionally insert additional static data)
 
 extern uint8_t chess_mode;
-extern uint8_t drawT;
 extern uint8_t freq;
 extern uint8_t scan_enabled;
 extern uint8_t need_to_clear;
 extern uint8_t need_to_redraw;
 extern uint8_t need_to_save;
 extern uint8_t need_to_cfg;
-extern float T_MIN;
-extern float T_MAX;
+extern float T_MIN_param;
+extern float T_MAX_param;
 
 WM_HWIN temp_text_inst;
 
@@ -261,7 +260,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
-        T_MIN = SLIDER_GetValue(hItem);
+        T_MIN_param = SLIDER_GetValue(hItem);
         need_to_redraw = 1;
         // USER END
         break;
@@ -282,7 +281,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       case WM_NOTIFICATION_VALUE_CHANGED:
         // USER START (Optionally insert code for reacting on notification message)
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
-        T_MAX = SLIDER_GetValue(hItem);
+        T_MAX_param = SLIDER_GetValue(hItem);
         need_to_redraw = 1;
         // USER END
         break;
