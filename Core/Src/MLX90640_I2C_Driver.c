@@ -17,42 +17,24 @@
 
 #include "MLX90640_I2C_Driver.h"
 
-//I2C i2c(p9, p10);
 #include "main.h"
+
 extern I2C_HandleTypeDef hi2c1;
-
-void MLX90640_I2CInit()
-{   
-    //i2c.stop();
-}
-
-void MLX90640_I2CFreqSet(int freq)
-{
-    //i2c.frequency(1000*freq);
-}
 
 int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddressRead, uint16_t *data)
 {
-
-	uint8_t* p = (uint8_t*) data;
-
-	int ack = 0;                               
-	int cnt = 0;
-	
-	ack = HAL_I2C_Mem_Read(&hi2c1, (slaveAddr<<1), startAddress, I2C_MEMADD_SIZE_16BIT, p, nMemAddressRead*2, 500);
+	int ack = HAL_I2C_Mem_Read(&hi2c1, (slaveAddr<<1), startAddress, I2C_MEMADD_SIZE_16BIT, (uint8_t*)data, nMemAddressRead*2, 500);
 
 	if (ack != HAL_OK)
 	{
-			return -1;
+    return -1;
 	}
-	
-
-	for(cnt=0; cnt < nMemAddressRead*2; cnt+=2) {
-		uint8_t tempBuffer = p[cnt+1];
-		p[cnt+1] = p[cnt];
-		p[cnt] = tempBuffer;
-	}
-
+  
+  for (uint16_t i = 0; i < nMemAddressRead; i++)
+  {
+    data[i] = __REV16(data[i]);
+  }
+  
 	return 0;   
 } 
 
@@ -60,18 +42,14 @@ int MLX90640_I2CRead(uint8_t slaveAddr, uint16_t startAddress, uint16_t nMemAddr
 int MLX90640_I2CWrite(uint8_t slaveAddr, uint16_t writeAddress, uint16_t data)
 {
 
-	uint8_t sa;
-	int ack = 0;
+	uint8_t sa = (slaveAddr << 1);
 	uint8_t cmd[2];
-	static uint16_t dataCheck;
-
-	sa = (slaveAddr << 1);
+	uint16_t dataCheck;
 
 	cmd[0] = data >> 8;
 	cmd[1] = data & 0x00FF;
 
-
-	ack = HAL_I2C_Mem_Write(&hi2c1, sa, writeAddress, I2C_MEMADD_SIZE_16BIT, cmd, sizeof(cmd), 500);
+	int ack = HAL_I2C_Mem_Write(&hi2c1, sa, writeAddress, I2C_MEMADD_SIZE_16BIT, cmd, sizeof(cmd), 500);
 
 	if (ack != HAL_OK)
 	{

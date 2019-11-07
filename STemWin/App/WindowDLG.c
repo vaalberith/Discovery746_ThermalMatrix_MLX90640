@@ -173,11 +173,11 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_0);
     SLIDER_SetRange(hItem, -50, 50);
-    SLIDER_SetValue(hItem, 20);
+    SLIDER_SetValue(hItem, T_MIN_param);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_1);
     SLIDER_SetRange(hItem, -50, 50);
-    SLIDER_SetValue(hItem, 35);
+    SLIDER_SetValue(hItem, T_MAX_param);
     
     // USER END
     break;

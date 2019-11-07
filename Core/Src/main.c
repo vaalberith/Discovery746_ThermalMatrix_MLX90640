@@ -159,8 +159,7 @@ uint8_t chess_mode = 1;
 
 #define SCALE_FACTOR 2
 
-//const float sq_size_xy = 11.2f;
-const float sq_size_xy = 5.6f;
+const float sq_size_xy = 11.2f / SCALE_FACTOR;
 
 typedef struct 
 {
@@ -269,7 +268,6 @@ void scale(image_t *src, image_t *dst, float scalex, float scaley)
     
     for(uint8_t i = 0; i < 3; i++)
     {
-        //((uint8_t*)&result)[i] = blerp( ((uint8_t*)&c00)[i], ((uint8_t*)&c10)[i], ((uint8_t*)&c01)[i], ((uint8_t*)&c11)[i], gxi - gx, gyi - gy); // this is shady
         result |= (uint8_t)blerp(getByte(c00, i), getByte(c10, i), getByte(c01, i), getByte(c11, i), gx - gxi, gy -gyi) << (8*i);
     }
     putpixel(dst,x, y, result);
@@ -317,7 +315,9 @@ uint32_t FLASH_GetSector(uint32_t Address)
   return sector;
 }
 
-void WriteToFlash(uint32_t address, uint32_t value)
+int32_t datacfg = 0;
+
+void saveCfg()
 {
   FLASH_EraseInitTypeDef EraseInitStruct;
   uint32_t SECTORError = 0;
@@ -338,27 +338,23 @@ void WriteToFlash(uint32_t address, uint32_t value)
     while(1);
   }
   
-  if (!HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, value) == HAL_OK)
-  {
-    while(1);
-  }
+  datacfg = freq;
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR, datacfg);
+  
+  datacfg = (int32_t)T_MIN_param;
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+4, datacfg);
+  
+  datacfg = (int32_t)T_MAX_param;
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+8, datacfg);
   
   HAL_FLASH_Lock();
 }
 
-void saveCfg()
-{
-  //uint32_t data = ((uint32_t)servo_delay << 24) | ((uint32_t)servo_step << 16) | ((uint32_t)col_count << 8) | row_count;
-  //WriteToFlash(FLASH_USER_START_ADDR, data);
-}
-
 void readCfg()
 {
-  /*uint32_t cfg = *(__IO uint32_t *)FLASH_USER_START_ADDR;
-  row_count = (uint8_t)cfg;
-  col_count = cfg >> 8;
-  servo_step = cfg >> 16;
-  servo_delay = cfg >> 24;*/
+  freq = *(__IO uint32_t *)FLASH_USER_START_ADDR;
+  T_MIN_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+4);
+  T_MAX_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+8);
 }
 
 //
