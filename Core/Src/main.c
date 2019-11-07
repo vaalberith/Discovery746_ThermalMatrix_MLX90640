@@ -481,11 +481,14 @@ void setlabelTemp()
 
 void handleTouch(uint16_t x, uint16_t y)
 {  
-  watch_x = (uint16_t)((x - start_x) / (sq_size_xy*SCALE_FACTOR*1.0f));
-  watch_y = (uint16_t)((y - start_y) / (sq_size_xy*SCALE_FACTOR*1.0f));
+  uint16_t t_watch_x = (uint16_t)((x - start_x) / (sq_size_xy*SCALE_FACTOR*1.0f));
+  uint16_t t_watch_y = (uint16_t)((y - start_y) / (sq_size_xy*SCALE_FACTOR*1.0f));
   
-  if (watch_x >= image_orig.w || watch_y >= image_orig.h)
+  if (t_watch_x >= image_orig.w || t_watch_y >= image_orig.h)
     return;
+  
+  watch_x = t_watch_x;
+  watch_y = t_watch_y;
   
   setlabelTemp();
   
