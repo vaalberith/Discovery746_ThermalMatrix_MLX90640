@@ -23,9 +23,9 @@
 
 if ($debugfile -eq "")
 {
-& "D:\ProgramFiles\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
+& "D:\Program Files\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
 }
 else
 {
-& "D:\ProgramFiles\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" --debug_file=$debugfile --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
+& "D:\Program Files\IAR\common\bin\cspybat" -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.general.xcl" --debug_file=$debugfile --backend -f "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\settings\Discovery_GFX.Discovery_GFX.driver.xcl" 
 }

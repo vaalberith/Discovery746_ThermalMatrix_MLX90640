@@ -134,7 +134,7 @@ static void MX_SDMMC1_SD_Init(void);
 
 #define SDRAM_ADDR_START_VALS 0xC0400000
 #define SDRAM_ADDR_START_SCREENSHOT 0xC0300000
-#define SDRAM_ADDR_START_CAM 0xC0500000
+#define SDRAM_ADDR_START_SCALE 0xC0500000
 
 //
 
@@ -147,12 +147,16 @@ static void MX_SDMMC1_SD_Init(void);
 #define  MLX90640_ADDR 0x33
 #define  TA_SHIFT 8 //Default shift for MLX90640 in open air
 
-static uint16_t eeMLX90640[832];  
-static float mlx90640To[768];
+uint16_t eeMLX90640[832];  
+float mlx90640To[768];
 uint16_t frame[834];
 float emissivity=0.95;
 uint8_t freq = FPS8HZ;
 uint8_t chess_mode = 1;
+
+#define SCALE_FACTOR 4
+
+uint32_t pixel_data[768];
 
 paramsMLX90640 mlx90640;
 
@@ -193,8 +197,8 @@ char str[40] = {0};
 const float sq_size_x = 11.2f;
 const float sq_size_y = 11.2f;
 
-//const float sq_size_x = 1;
-//const float sq_size_y = 1;
+//const float sq_size_x = 2.8f;
+//const float sq_size_y = 2.8f;
 
 const uint16_t start_x = 120;
 const uint16_t start_y = 0;
@@ -372,26 +376,15 @@ uint32_t temp_to_rgb(float temp, float t_min, float t_max)
   return rgb;
 }
 
-void drawPixel(int col, int row, float temp, float t_min, float t_max, uint8_t drawlabel)
+void drawPixel(int col, int row, uint32_t color)
 {
   int x1 = (int)(start_x + col*sq_size_x);
   int y1 = (int)(start_y + row*sq_size_y);
   int x2 = (int)(start_x + (col+1)*sq_size_x);
   int y2 = (int)(start_y + (row+1)*sq_size_y);
   
-  uint32_t color = temp_to_rgb(temp, t_min, t_max);
   GUI_SetColor(color);
   GUI_FillRect(x1, y1, x2, y2);
-  
-  if (drawlabel)
-  {
-    snprintf(str, sizeof(str), "%+.1f", temp);
-    int x = (int)(start_x + col*sq_size_x);
-    int y = (int)(start_y + row*sq_size_y);
-    GUI_SetTextMode(GUI_TEXTMODE_TRANS);
-    drawText(str, x-3, y, GUI_WHITE, &GUI_Font4x6);
-    GUI_SetTextMode(GUI_TEXTMODE_NORMAL);
-  }
 }
 
 //
@@ -582,48 +575,69 @@ void cfgMLX()
     
 }
 
-typedef struct {
-    uint32_t *pixels;
-    unsigned int w;
-    unsigned int h;
+typedef struct 
+{
+  uint32_t *pixels;
+  unsigned int w;
+  unsigned int h;
 } image_t;
+
 #define getByte(value, n) (value >> (n*8) & 0xFF)
  
-uint32_t getpixel(image_t *image, unsigned int x, unsigned int y){
-    return image->pixels[(y*image->w)+x];
+uint32_t getpixel(image_t *image, uint32_t x, uint32_t y)
+{
+  return image->pixels[(y*image->w)+x];
 }
-float lerp(float s, float e, float t){return s+(e-s)*t;}
-float blerp(float c00, float c10, float c01, float c11, float tx, float ty){
-    return lerp(lerp(c00, c10, tx), lerp(c01, c11, tx), ty);
+
+float lerp(float s, float e, float t)
+{
+  return s+(e-s)*t;
 }
-void putpixel(image_t *image, unsigned int x, unsigned int y, uint32_t color){
-    image->pixels[(y*image->w) + x] = color;
+
+float blerp(float c00, float c10, float c01, float c11, float tx, float ty)
+{
+  return lerp(lerp(c00, c10, tx), lerp(c01, c11, tx), ty);
 }
-void scale(image_t *src, image_t *dst, float scalex, float scaley){
-    int newWidth = (int)src->w*scalex;
-    int newHeight= (int)src->h*scaley;
-    int x, y;
-    for(x= 0, y=0; y < newHeight; x++){
-        if(x > newWidth){
-            x = 0; y++;
-        }
-        float gx = x / (float)(newWidth) * (src->w-1);
-        float gy = y / (float)(newHeight) * (src->h-1);
-        int gxi = (int)gx;
-        int gyi = (int)gy;
-        uint32_t result=0;
-        uint32_t c00 = getpixel(src, gxi, gyi);
-        uint32_t c10 = getpixel(src, gxi+1, gyi);
-        uint32_t c01 = getpixel(src, gxi, gyi+1);
-        uint32_t c11 = getpixel(src, gxi+1, gyi+1);
-        uint8_t i;
-        for(i = 0; i < 3; i++){
-            //((uint8_t*)&result)[i] = blerp( ((uint8_t*)&c00)[i], ((uint8_t*)&c10)[i], ((uint8_t*)&c01)[i], ((uint8_t*)&c11)[i], gxi - gx, gyi - gy); // this is shady
-            result |= (uint8_t)blerp(getByte(c00, i), getByte(c10, i), getByte(c01, i), getByte(c11, i), gx - gxi, gy -gyi) << (8*i);
-        }
-        putpixel(dst,x, y, result);
+
+void putpixel(image_t *image, uint32_t x, uint32_t y, uint32_t color)
+{
+  image->pixels[(y*image->w) + x] = color;
+}
+
+void scale(image_t *src, image_t *dst, float scalex, float scaley)
+{
+  int newWidth = (int)src->w*scalex;
+  int newHeight= (int)src->h*scaley;
+  int x, y;
+  for(x = 0, y = 0; y < newHeight; x++)
+  {
+    if(x > newWidth)
+    {
+        x = 0; y++;
     }
+    float gx = x / (float)(newWidth) * (src->w-1);
+    float gy = y / (float)(newHeight) * (src->h-1);
+    int gxi = (int)gx;
+    int gyi = (int)gy;
+    uint32_t result=0;
+    uint32_t c00 = getpixel(src, gxi, gyi);
+    uint32_t c10 = getpixel(src, gxi+1, gyi);
+    uint32_t c01 = getpixel(src, gxi, gyi+1);
+    uint32_t c11 = getpixel(src, gxi+1, gyi+1);
+    
+    for(uint8_t i = 0; i < 3; i++)
+    {
+        //((uint8_t*)&result)[i] = blerp( ((uint8_t*)&c00)[i], ((uint8_t*)&c10)[i], ((uint8_t*)&c01)[i], ((uint8_t*)&c11)[i], gxi - gx, gyi - gy); // this is shady
+        result |= (uint8_t)blerp(getByte(c00, i), getByte(c10, i), getByte(c01, i), getByte(c11, i), gx - gxi, gy -gyi) << (8*i);
+    }
+    putpixel(dst,x, y, result);
+  }
 }
+
+
+
+image_t a = {pixel_data, 32, 24};
+image_t b = {(uint32_t*)SDRAM_ADDR_START_SCALE, 32*SCALE_FACTOR, 24*SCALE_FACTOR};
 
 /* USER CODE END 0 */
 
@@ -743,7 +757,10 @@ int main(void)
       
       for (int j = 0; j < row_count; j++)
         for (int i = 0; i < col_count; i++)
-          drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
+        {
+            uint32_t color = temp_to_rgb(mlx90640To[j*col_count+i], T_MIN, T_MAX);
+            drawPixel(col_count - 1 - i, j, color);
+        }
       
       HAL_Delay(10);
     }    
@@ -771,12 +788,20 @@ int main(void)
       float Tr = Ta - TA_SHIFT;
       MLX90640_CalculateTo(frame, &mlx90640, emissivity , Tr, mlx90640To);
       
-      for (int j = 0; j < row_count; j++)
-        for (int i = 0; i < col_count; i++)
-          drawPixel(col_count - 1 - i, j, mlx90640To[j*col_count+i], T_MIN, T_MAX, 0);
+      for (int i = 0; i < 768; i++)
+        pixel_data[i] = temp_to_rgb(mlx90640To[i], T_MIN, T_MAX);
+      
+      scale(&a, &b, SCALE_FACTOR, SCALE_FACTOR);
+      
+      for (int j = 0; j < a.h; j++)
+        for (int i = 0; i < a.w; i++)
+        {
+            drawPixel(a.w - 1 - i, j, a.pixels[j*a.w+i]);
+        }
       
       if (watch_col < 0 || watch_row < 0 || watch_col >= col_count || watch_row >= row_count)
         continue;
+      
       setlabelTemp();
     }
   }
