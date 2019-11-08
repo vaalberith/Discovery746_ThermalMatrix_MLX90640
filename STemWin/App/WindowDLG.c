@@ -34,13 +34,15 @@
 #define ID_WINDOW_0 (GUI_ID_USER + 0x00)
 #define ID_BUTTON_0 (GUI_ID_USER + 0x01)
 #define ID_BUTTON_1 (GUI_ID_USER + 0x02)
-#define ID_SPINBOX_0 (GUI_ID_USER + 0x03)
 #define ID_SLIDER_0 (GUI_ID_USER + 0x04)
 #define ID_SLIDER_1 (GUI_ID_USER + 0x05)
 #define ID_BUTTON_2 (GUI_ID_USER + 0x06)
 #define ID_CHECKBOX_0 (GUI_ID_USER + 0x07)
 #define ID_TEXT_0 (GUI_ID_USER + 0x08)
 #define ID_TEXT_1 (GUI_ID_USER + 0x09)
+#define ID_SLIDER_2 (GUI_ID_USER + 0x0A)
+#define ID_SLIDER_3 (GUI_ID_USER + 0x0B)
+#define ID_TEXT_2 (GUI_ID_USER + 0x0C)
 
 
 // USER START (Optionally insert additional defines)
@@ -57,11 +59,15 @@
 
 extern uint8_t chess_mode;
 extern uint8_t freq;
+extern float scale_factor;
+
 extern uint8_t scan_enabled;
 extern uint8_t need_to_clear;
 extern uint8_t need_to_redraw;
 extern uint8_t need_to_save;
 extern uint8_t need_to_cfg;
+extern uint8_t need_to_cfg_scale;
+
 extern float T_MIN_param;
 extern float T_MAX_param;
 
@@ -82,13 +88,15 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 50, 0, 75, 272, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Clear", ID_BUTTON_0, 0, 40, 75, 40, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Save", ID_BUTTON_1, 0, 85, 75, 26, 0, 0x0, 0 },
-  { SPINBOX_CreateIndirect, "DelayNum", ID_SPINBOX_0, 0, 149, 75, 40, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderL", ID_SLIDER_0, 0, 250, 75, 23, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderH", ID_SLIDER_1, 0, 225, 75, 23, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Launch", ID_BUTTON_2, 0, 0, 75, 40, 0, 0x0, 0 },
-  { CHECKBOX_CreateIndirect, "Chess", ID_CHECKBOX_0, 0, 195, 80, 20, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Hz", ID_TEXT_0, 10, 160, 36, 20, 0, 0x0, 0 },
-  { TEXT_CreateIndirect, "Temp", ID_TEXT_1, 10, 115, 55, 30, 0, 0x0, 0 },
+  { CHECKBOX_CreateIndirect, "Chess", ID_CHECKBOX_0, 1, 150, 75, 20, 0, 0x0, 0 },
+  { TEXT_CreateIndirect, "Hz", ID_TEXT_0, 51, 200, 24, 20, 0, 0x0, 0 },
+  { TEXT_CreateIndirect, "Temp", ID_TEXT_1, 15, 120, 45, 18, 0, 0x0, 0 },
+  { SLIDER_CreateIndirect, "Slider", ID_SLIDER_2, 0, 200, 50, 23, 0, 0x0, 0 },
+  { SLIDER_CreateIndirect, "Slider", ID_SLIDER_3, 0, 175, 50, 23, 0, 0x0, 0 },
+  { TEXT_CreateIndirect, "Sca", ID_TEXT_2, 51, 175, 24, 20, 0, 0x0, 0 },
   // USER START (Optionally insert additional widgets)
   // USER END
 };
@@ -132,11 +140,6 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_1);
     BUTTON_SetFont(hItem, GUI_FONT_16B_1);
     //
-    // Initialization of 'DelayNum'
-    //
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
-    SPINBOX_SetFont(hItem, GUI_FONT_4X6);
-    //
     // Initialization of 'Launch'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_2);
@@ -152,14 +155,20 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     // Initialization of 'Hz'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
-    TEXT_SetFont(hItem, GUI_FONT_16_1);
-    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00000000));
+    TEXT_SetFont(hItem, GUI_FONT_16B_1);
+    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
     //
     // Initialization of 'Temp'
     //
     hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
     TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
     TEXT_SetFont(hItem, GUI_FONT_16B_1);
+    //
+    // Initialization of 'Sca'
+    //
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
+    TEXT_SetFont(hItem, GUI_FONT_16B_1);
+    TEXT_SetTextColor(hItem, GUI_MAKE_COLOR(0x00FFFFFF));
     // USER START (Optionally insert additional code for further widget initialization)
     
     temp_text_inst = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
@@ -167,17 +176,21 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     hItem = WM_GetDialogItem(pMsg->hWin, ID_CHECKBOX_0);
     CHECKBOX_SetState(hItem, chess_mode);
     
-    hItem = WM_GetDialogItem(pMsg->hWin, ID_SPINBOX_0);
-    SPINBOX_SetValue(hItem, freq);
-    SPINBOX_SetRange(hItem, 0, 7);
-    
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_0);
-    SLIDER_SetRange(hItem, -50, 50);
+    SLIDER_SetRange(hItem, -20, 50);
     SLIDER_SetValue(hItem, T_MIN_param);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_1);
-    SLIDER_SetRange(hItem, -50, 50);
+    SLIDER_SetRange(hItem, -20, 50);
     SLIDER_SetValue(hItem, T_MAX_param);
+    
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_2);
+    SLIDER_SetRange(hItem, 0, 7);
+    SLIDER_SetValue(hItem, freq);
+    
+    hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_3);
+    SLIDER_SetRange(hItem, 1, 16);
+    SLIDER_SetValue(hItem, (int)(scale_factor * 2));
     
     // USER END
     break;
@@ -209,38 +222,6 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
         break;
       case WM_NOTIFICATION_RELEASED:
         // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_SPINBOX_0: // Notifications sent by 'DelayNum'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_MOVED_OUT:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_VALUE_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-        hItem = WM_GetDialogItem(pMsg->hWin, Id);
-    	  freq = SPINBOX_GetValue(hItem);
-        
-        float r_freq = pow(2.0, (float)freq)/2.0;
-        char str[8] = {0};
-        snprintf(str, sizeof(str), "%1.1f", r_freq);
-        hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
-        TEXT_SetText(hItem, str);
-        
-        need_to_cfg = 1;
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)
@@ -319,6 +300,65 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
         hItem = WM_GetDialogItem(pMsg->hWin, Id);
         chess_mode = CHECKBOX_IsChecked(hItem);
         need_to_cfg = 1;
+        // USER END
+        break;
+      // USER START (Optionally insert additional code for further notification handling)
+      // USER END
+      }
+      break;
+    case ID_SLIDER_2: // Notifications sent by 'Slider'
+      switch(NCode) {
+      case WM_NOTIFICATION_CLICKED:
+        // USER START (Optionally insert code for reacting on notification message)
+        // USER END
+        break;
+      case WM_NOTIFICATION_RELEASED:
+        // USER START (Optionally insert code for reacting on notification message)
+        // USER END
+        break;
+      case WM_NOTIFICATION_VALUE_CHANGED:
+        // USER START (Optionally insert code for reacting on notification message)
+        
+        hItem = WM_GetDialogItem(pMsg->hWin, Id);
+    	  freq = SLIDER_GetValue(hItem);
+        
+        float r_freq = pow(2.0, (float)freq) / 2.0;
+        char str[8] = {0};
+        snprintf(str, sizeof(str), "%1.1f", r_freq);
+        hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
+        TEXT_SetText(hItem, str);
+        
+        need_to_cfg = 1;
+        
+        // USER END
+        break;
+      // USER START (Optionally insert additional code for further notification handling)
+      // USER END
+      }
+      break;
+    case ID_SLIDER_3: // Notifications sent by 'Slider'
+      switch(NCode) {
+      case WM_NOTIFICATION_CLICKED:
+        // USER START (Optionally insert code for reacting on notification message)
+        // USER END
+        break;
+      case WM_NOTIFICATION_RELEASED:
+        // USER START (Optionally insert code for reacting on notification message)
+        // USER END
+        break;
+      case WM_NOTIFICATION_VALUE_CHANGED:
+        // USER START (Optionally insert code for reacting on notification message)
+        
+        hItem = WM_GetDialogItem(pMsg->hWin, Id);
+    	  scale_factor = SLIDER_GetValue(hItem) / 2.0;
+        
+        char str[8] = {0};
+        snprintf(str, sizeof(str), "%1.1f", scale_factor);
+        hItem = WM_GetDialogItem(pMsg->hWin, ID_TEXT_2);
+        TEXT_SetText(hItem, str);
+        
+        need_to_cfg_scale = 1;
+        
         // USER END
         break;
       // USER START (Optionally insert additional code for further notification handling)

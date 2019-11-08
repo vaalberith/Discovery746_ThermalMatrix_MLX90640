@@ -1,20 +1,20 @@
-"D:\Program Files\IAR\arm\bin\armproc.dll" 
+"D:\ProgramFiles\IAR\arm\bin\armproc.dll" 
 
-"D:\Program Files\IAR\arm\bin\armstlink2.dll" 
+"D:\ProgramFiles\IAR\arm\bin\armstlink2.dll" 
 
 "D:\_VT\IAR\Discovery_ThermalMatrix\EWARM\Discovery_GFX\Exe\Discovery_GFX.out" 
 
---plugin="D:\Program Files\IAR\arm\bin\armbat.dll" 
+--plugin="D:\ProgramFiles\IAR\arm\bin\armbat.dll" 
 
---device_macro="D:\Program Files\IAR\arm\config\debugger\ST\STM32F7xx.dmac" 
+--device_macro="D:\ProgramFiles\IAR\arm\config\debugger\ST\STM32F7xx.dmac" 
 
---device_macro="D:\Program Files\IAR\arm\config\debugger\ST\STM32F7xx_DBG.dmac" 
+--device_macro="D:\ProgramFiles\IAR\arm\config\debugger\ST\STM32F7xx_DBG.dmac" 
 
---device_macro="D:\Program Files\IAR\arm\config\debugger\ST\STM32F7xx_OB.dmac" 
+--device_macro="D:\ProgramFiles\IAR\arm\config\debugger\ST\STM32F7xx_OB.dmac" 
 
---device_macro="D:\Program Files\IAR\arm\config\debugger\ST\STM32F7xx_TRACE.dmac" 
+--device_macro="D:\ProgramFiles\IAR\arm\config\debugger\ST\STM32F7xx_TRACE.dmac" 
 
---flash_loader="D:\Program Files\IAR\arm\config\flashloader\ST\FlashSTM32F74xxG.board" 
+--flash_loader="D:\ProgramFiles\IAR\arm\config\flashloader\ST\FlashSTM32F74xxG.board" 
 
 
 

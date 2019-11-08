@@ -138,48 +138,6 @@ static void MX_SDMMC1_SD_Init(void);
 
 //
 
-#define  FPS2HZ   0x02
-#define  FPS4HZ   0x03
-#define  FPS8HZ   0x04
-#define  FPS16HZ  0x05
-#define  FPS32HZ  0x06
-
-#define  MLX90640_ADDR 0x33
-#define  TA_SHIFT 8
-
-paramsMLX90640 mlx90640;
-uint16_t eeMLX90640[832];  
-uint16_t frame[834];
-float mlx90640To[768];
-uint32_t pixel_data[768];
-
-float emissivity = 0.95;
-uint8_t freq = FPS8HZ;
-uint8_t chess_mode = 1;
-
-#define SCALE_FACTOR 2
-
-const float sq_size_xy = 11.2f / SCALE_FACTOR;
-
-typedef struct 
-{
-  uint32_t *pixels;
-  unsigned int w;
-  unsigned int h;
-} image_t;
-
-image_t image_orig = {pixel_data, 32, 24};
-image_t image_scaled = {(uint32_t*)SDRAM_ADDR_START_SCALE, 32*SCALE_FACTOR, 24*SCALE_FACTOR};
-
-#define getByte(value, n) (value >> (n*8) & 0xFF)
-
-//
-
-float T_MIN_param = 20;
-float T_MAX_param = 35;
-
-//
-
 WM_HWIN CreateWindow(void);
 
 //
@@ -222,9 +180,59 @@ uint8_t need_to_clear = 0;
 uint8_t need_to_redraw = 0;
 uint8_t need_to_save = 0;
 uint8_t need_to_cfg = 0;
+uint8_t need_to_cfg_scale = 0;
 
 //
- 
+
+#define  FPS2HZ   0x02
+#define  FPS4HZ   0x03
+#define  FPS8HZ   0x04
+#define  FPS16HZ  0x05
+#define  FPS32HZ  0x06
+
+#define  MLX90640_ADDR 0x33
+#define  TA_SHIFT 8
+
+paramsMLX90640 mlx90640;
+uint16_t eeMLX90640[832];  
+uint16_t frame[834];
+float mlx90640To[768];
+uint32_t pixel_data[768];
+
+float emissivity = 0.95;
+uint8_t freq = FPS8HZ;
+uint8_t chess_mode = 1;
+
+float scale_factor = 1;
+
+float sq_size_xy = 11.2f;
+
+typedef struct 
+{
+  uint32_t *pixels;
+  unsigned int w;
+  unsigned int h;
+} image_t;
+
+image_t image_orig = {pixel_data, 32, 24};
+image_t image_scaled = {(uint32_t*)SDRAM_ADDR_START_SCALE, 32, 24};
+
+#define getByte(value, n) (value >> (n*8) & 0xFF)
+
+//
+
+float T_MIN_param = 20;
+float T_MAX_param = 35;
+
+//
+
+void scale_cfg()
+{
+  image_scaled.w = 32 * scale_factor;
+  image_scaled.h = 24 * scale_factor;
+  sq_size_xy = 11.2f / scale_factor;
+}
+
 uint32_t getpixel(image_t *image, uint16_t x, uint16_t y)
 {
   return image->pixels[(y*image->w)+x];
@@ -315,8 +323,6 @@ uint32_t FLASH_GetSector(uint32_t Address)
   return sector;
 }
 
-int32_t datacfg = 0;
-
 void saveCfg()
 {
   FLASH_EraseInitTypeDef EraseInitStruct;
@@ -332,11 +338,12 @@ void saveCfg()
   EraseInitStruct.Sector        = FirstSector;
   EraseInitStruct.NbSectors     = NbOfSectors;
 
-  
   if (HAL_FLASHEx_Erase(&EraseInitStruct, &SECTORError) != HAL_OK)
   {
     while(1);
   }
+  
+  int32_t datacfg = 0;
   
   datacfg = freq;
   HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR, datacfg);
@@ -477,8 +484,8 @@ void setlabelTemp()
 
 void handleTouch(uint16_t x, uint16_t y)
 {  
-  uint16_t t_watch_x = (uint16_t)((x - start_x) / (sq_size_xy*SCALE_FACTOR*1.0f));
-  uint16_t t_watch_y = (uint16_t)((y - start_y) / (sq_size_xy*SCALE_FACTOR*1.0f));
+  uint16_t t_watch_x = (uint16_t)((x - start_x) / (sq_size_xy*scale_factor*1.0f));
+  uint16_t t_watch_y = (uint16_t)((y - start_y) / (sq_size_xy*scale_factor*1.0f));
   
   if (t_watch_x >= image_orig.w || t_watch_y >= image_orig.h)
     return;
@@ -488,8 +495,8 @@ void handleTouch(uint16_t x, uint16_t y)
   
   setlabelTemp();
   
-  uint16_t _x = (uint16_t)(start_x + watch_x*sq_size_xy*SCALE_FACTOR*1.0f);
-  uint16_t _y = (uint16_t)(start_y + watch_y*sq_size_xy*SCALE_FACTOR*1.0f);
+  uint16_t _x = (uint16_t)(start_x + watch_x*sq_size_xy*scale_factor*1.0f);
+  uint16_t _y = (uint16_t)(start_y + watch_y*sq_size_xy*scale_factor*1.0f);
   GUI_SelectLayer(1);
   GUI_Clear();
   drawText("*", _x, _y, GUI_WHITE, &GUI_Font8_1);
@@ -613,7 +620,7 @@ void handleMLXdata()
   for (uint16_t i = 0; i < image_orig.h * image_orig.w; i++)
     pixel_data[i] = temp_to_rgb(mlx90640To[i], T_MIN_param, T_MAX_param);
       
-  scale(&image_orig, &image_scaled, SCALE_FACTOR, SCALE_FACTOR);
+  scale(&image_orig, &image_scaled, scale_factor, scale_factor);
 
   for (int j = 0; j < image_scaled.h; j++)
     for (int i = 0; i < image_scaled.w; i++)
@@ -762,6 +769,12 @@ int main(void)
       cfgMLX();
       
       HAL_Delay(10);
+    }
+    if (need_to_cfg_scale)
+    {
+      need_to_cfg_scale = 0;
+      
+      scale_cfg();
     }
     
     if (scan_enabled)
