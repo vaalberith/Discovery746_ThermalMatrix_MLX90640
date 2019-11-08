@@ -417,7 +417,7 @@ uint32_t transColor(uint32_t rgb, uint8_t trans)
   return rgb & 0x00FFFFFF | ((uint32_t)trans << 24);
 }
 
-uint32_t temp_to_rgb(float temp, float t_min, float t_max)
+/*uint32_t temp_to_rgb(float temp, float t_min, float t_max)
 {
   uint8_t alpha = 0x00;
   uint8_t r = 0xFF;
@@ -436,6 +436,49 @@ uint32_t temp_to_rgb(float temp, float t_min, float t_max)
   r -= delta;
   b += delta;
   g += delta/2;
+  
+  rgb = (alpha << 24) | (b << 16) | (g << 8) | r;
+  
+  return rgb;
+}*/
+
+uint32_t temp_to_rgb(float temp, float t_min, float t_max)
+{
+  uint8_t alpha = 0x00;
+  uint8_t r = 0xFF;
+  uint8_t g = 0xFF;
+  uint8_t b = 0xFF;
+
+  uint32_t rgb = 0;
+  
+  float dv = t_max - t_min;
+  
+  if (temp < t_min)
+      temp = t_min;
+  if (temp > t_max)
+    temp = t_max;
+  dv = t_max - t_min;
+
+  if (temp < (t_min + 0.25 * dv)) 
+  {
+    r = 0;
+    g = (4 * (temp - t_min) / dv) * 255.0;
+  }
+  else if (temp < (t_min + 0.5 * dv))
+  {
+    r = 0;
+    b = (1 + 4 * (t_min + 0.25 * dv - temp) / dv) * 255.0;
+  } 
+  else if (temp < (t_min + 0.75 * dv))
+  {
+    r = (4 * (temp - t_min - 0.5 * dv) / dv) * 255.0;
+    b = 0;
+  }
+  else
+  {
+    g = (1 + 4 * (t_min + 0.75 * dv - temp) / dv) * 255.0;
+    b = 0;
+  }
   
   rgb = (alpha << 24) | (b << 16) | (g << 8) | r;
   
