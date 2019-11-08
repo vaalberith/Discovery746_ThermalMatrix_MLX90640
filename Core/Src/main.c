@@ -168,6 +168,8 @@ char str[40] = {0};
 const uint16_t start_x = 120;
 const uint16_t start_y = 0;
 
+const float sq_size_xy_orig = 11.25f;
+
 uint16_t watch_x = 0;
 uint16_t watch_y = 0;
 
@@ -205,7 +207,7 @@ uint8_t chess_mode = 1;
 
 float scale_factor = 1;
 
-float sq_size_xy = 11.2f;
+float sq_size_xy;
 
 typedef struct 
 {
@@ -230,7 +232,7 @@ void scale_cfg()
 {
   image_scaled.w = 32 * scale_factor;
   image_scaled.h = 24 * scale_factor;
-  sq_size_xy = 11.2f / scale_factor;
+  sq_size_xy = sq_size_xy_orig / scale_factor;
 }
 
 uint32_t getpixel(image_t *image, uint16_t x, uint16_t y)

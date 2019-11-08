@@ -31,18 +31,18 @@
 *
 **********************************************************************
 */
-#define ID_WINDOW_0 (GUI_ID_USER + 0x00)
-#define ID_BUTTON_0 (GUI_ID_USER + 0x01)
-#define ID_BUTTON_1 (GUI_ID_USER + 0x02)
-#define ID_SLIDER_0 (GUI_ID_USER + 0x04)
-#define ID_SLIDER_1 (GUI_ID_USER + 0x05)
-#define ID_BUTTON_2 (GUI_ID_USER + 0x06)
-#define ID_CHECKBOX_0 (GUI_ID_USER + 0x07)
-#define ID_TEXT_0 (GUI_ID_USER + 0x08)
-#define ID_TEXT_1 (GUI_ID_USER + 0x09)
-#define ID_SLIDER_2 (GUI_ID_USER + 0x0A)
-#define ID_SLIDER_3 (GUI_ID_USER + 0x0B)
-#define ID_TEXT_2 (GUI_ID_USER + 0x0C)
+#define ID_WINDOW_0        (GUI_ID_USER + 0x00)
+#define ID_BUTTON_0        (GUI_ID_USER + 0x01)
+#define ID_BUTTON_1        (GUI_ID_USER + 0x02)
+#define ID_SLIDER_0        (GUI_ID_USER + 0x03)
+#define ID_SLIDER_1        (GUI_ID_USER + 0x04)
+#define ID_BUTTON_2        (GUI_ID_USER + 0x05)
+#define ID_CHECKBOX_0        (GUI_ID_USER + 0x06)
+#define ID_TEXT_0        (GUI_ID_USER + 0x07)
+#define ID_TEXT_1        (GUI_ID_USER + 0x08)
+#define ID_SLIDER_2        (GUI_ID_USER + 0x09)
+#define ID_SLIDER_3        (GUI_ID_USER + 0x0A)
+#define ID_TEXT_2        (GUI_ID_USER + 0x0B)
 
 
 // USER START (Optionally insert additional defines)
@@ -85,7 +85,7 @@ void temp_setlabel(char *str)
 *       _aDialogCreate
 */
 static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
-  { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 50, 0, 75, 272, 0, 0x0, 0 },
+  { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, 45, 0, 75, 272, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Clear", ID_BUTTON_0, 0, 40, 75, 40, 0, 0x0, 0 },
   { BUTTON_CreateIndirect, "Save", ID_BUTTON_1, 0, 85, 75, 26, 0, 0x0, 0 },
   { SLIDER_CreateIndirect, "SliderL", ID_SLIDER_0, 0, 250, 75, 23, 0, 0x0, 0 },
@@ -94,8 +94,8 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { CHECKBOX_CreateIndirect, "Chess", ID_CHECKBOX_0, 1, 150, 75, 20, 0, 0x0, 0 },
   { TEXT_CreateIndirect, "Hz", ID_TEXT_0, 51, 200, 24, 20, 0, 0x0, 0 },
   { TEXT_CreateIndirect, "Temp", ID_TEXT_1, 15, 120, 45, 18, 0, 0x0, 0 },
-  { SLIDER_CreateIndirect, "Slider", ID_SLIDER_2, 0, 200, 50, 23, 0, 0x0, 0 },
-  { SLIDER_CreateIndirect, "Slider", ID_SLIDER_3, 0, 175, 50, 23, 0, 0x0, 0 },
+  { SLIDER_CreateIndirect, "SliderFreq", ID_SLIDER_2, 0, 200, 50, 23, 0, 0x0, 0 },
+  { SLIDER_CreateIndirect, "SliderScale", ID_SLIDER_3, 0, 175, 50, 23, 0, 0x0, 0 },
   { TEXT_CreateIndirect, "Sca", ID_TEXT_2, 51, 175, 24, 20, 0, 0x0, 0 },
   // USER START (Optionally insert additional widgets)
   // USER END
@@ -306,7 +306,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       // USER END
       }
       break;
-    case ID_SLIDER_2: // Notifications sent by 'Slider'
+    case ID_SLIDER_2: // Notifications sent by 'SliderFreq'
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
@@ -336,7 +336,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       // USER END
       }
       break;
-    case ID_SLIDER_3: // Notifications sent by 'Slider'
+    case ID_SLIDER_3: // Notifications sent by 'SliderScale'
       switch(NCode) {
       case WM_NOTIFICATION_CLICKED:
         // USER START (Optionally insert code for reacting on notification message)
