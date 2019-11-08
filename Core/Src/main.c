@@ -429,7 +429,7 @@ uint32_t temp_to_rgb_simple(float temp, float t_min, float t_max)
   uint8_t r = 0xFF;
   uint8_t g = 0x00;
   uint8_t b = 0x00;
-  uint16_t delta = 0;
+  int16_t delta = 0;
   uint32_t rgb = 0;
   
   float k = (t_max - t_min) / 255.0f;
@@ -438,10 +438,12 @@ uint32_t temp_to_rgb_simple(float temp, float t_min, float t_max)
   
   if (delta > 0xFF)
     delta = 0xFF;
+  else
+  if (delta < 0)
+    delta = 0;
   
   r -= delta;
   b += delta;
-  g += delta/2;
   
   rgb = (alpha << 24) | (b << 16) | (g << 8) | r;
   
