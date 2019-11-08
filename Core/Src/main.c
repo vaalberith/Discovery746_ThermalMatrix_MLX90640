@@ -428,15 +428,16 @@ uint32_t temp_to_rgb(float temp, float t_min, float t_max)
   
   float k = (t_max - t_min) / 255.0f;
   
-  delta = (uint16_t)((temp - t_min)/k);
+  delta = (uint16_t)((t_max - temp)/k);
   
-  if (delta > 255)
-    delta = 255;
+  if (delta > 0xFF)
+    delta = 0xFF;
   
   r -= delta;
   b += delta;
+  g += delta/2;
   
-  rgb = (alpha << 24) | (r << 16) | (g << 8) | b;
+  rgb = (alpha << 24) | (b << 16) | (g << 8) | r;
   
   return rgb;
 }
