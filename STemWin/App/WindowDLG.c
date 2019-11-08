@@ -189,7 +189,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     SLIDER_SetValue(hItem, freq);
     
     hItem = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_3);
-    SLIDER_SetRange(hItem, 1, 16);
+    SLIDER_SetRange(hItem, 1, 8);
     SLIDER_SetValue(hItem, (int)(scale_factor * 2));
     
     // USER END

@@ -348,11 +348,14 @@ void saveCfg()
   datacfg = freq;
   HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR, datacfg);
   
-  datacfg = (int32_t)T_MIN_param;
+  datacfg = scale_factor * 2;
   HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+4, datacfg);
   
-  datacfg = (int32_t)T_MAX_param;
+  datacfg = (int32_t)T_MIN_param;
   HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+8, datacfg);
+  
+  datacfg = (int32_t)T_MAX_param;
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+12, datacfg);
   
   HAL_FLASH_Lock();
 }
@@ -360,8 +363,9 @@ void saveCfg()
 void readCfg()
 {
   freq = *(__IO uint32_t *)FLASH_USER_START_ADDR;
-  T_MIN_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+4);
-  T_MAX_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+8);
+  scale_factor = (float) *(__IO uint32_t *)(FLASH_USER_START_ADDR+4) / 2;
+  T_MIN_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+8);
+  T_MAX_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+12);
 }
 
 //
@@ -688,6 +692,8 @@ int main(void)
   
   readCfg();
   
+  scale_cfg();
+  
   TouchTimer_Init();
   
   GRAPHICS_HW_Init();
@@ -775,6 +781,10 @@ int main(void)
       need_to_cfg_scale = 0;
       
       scale_cfg();
+      
+      HAL_Delay(10);
+      handleMLXdata();
+      HAL_Delay(10);
     }
     
     if (scan_enabled)
