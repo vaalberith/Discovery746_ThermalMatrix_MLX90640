@@ -177,7 +177,7 @@ void temp_setlabel(char *str);
 
 //
 
-uint8_t scan_enabled = 0;
+uint8_t scan_enabled = 1;
 uint8_t need_to_clear = 0;
 uint8_t need_to_redraw = 0;
 uint8_t need_to_save = 0;
