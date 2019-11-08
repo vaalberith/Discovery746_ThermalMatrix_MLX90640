@@ -209,6 +209,8 @@ float scale_factor = 1;
 
 float sq_size_xy;
 
+uint8_t better_color_ramping = 0;
+
 typedef struct 
 {
   uint32_t *pixels;
@@ -350,14 +352,17 @@ void saveCfg()
   datacfg = freq;
   HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR, datacfg);
   
+  datacfg = better_color_ramping;
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+0x4, datacfg);
+  
   datacfg = scale_factor * 2;
-  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+4, datacfg);
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+0x8, datacfg);
   
   datacfg = (int32_t)T_MIN_param;
-  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+8, datacfg);
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+0xC, datacfg);
   
   datacfg = (int32_t)T_MAX_param;
-  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+12, datacfg);
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_USER_START_ADDR+0x10, datacfg);
   
   HAL_FLASH_Lock();
 }
@@ -365,9 +370,10 @@ void saveCfg()
 void readCfg()
 {
   freq = *(__IO uint32_t *)FLASH_USER_START_ADDR;
-  scale_factor = (float) *(__IO uint32_t *)(FLASH_USER_START_ADDR+4) / 2;
-  T_MIN_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+8);
-  T_MAX_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+12);
+  better_color_ramping = *(__IO uint32_t *)(FLASH_USER_START_ADDR+0x4);
+  scale_factor = (float) *(__IO uint32_t *)(FLASH_USER_START_ADDR+0x8) / 2;
+  T_MIN_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+0xC);
+  T_MAX_param = (int32_t) *(__IO uint32_t *)(FLASH_USER_START_ADDR+0x10);
 }
 
 //
@@ -417,7 +423,7 @@ uint32_t transColor(uint32_t rgb, uint8_t trans)
   return rgb & 0x00FFFFFF | ((uint32_t)trans << 24);
 }
 
-/*uint32_t temp_to_rgb(float temp, float t_min, float t_max)
+uint32_t temp_to_rgb_simple(float temp, float t_min, float t_max)
 {
   uint8_t alpha = 0x00;
   uint8_t r = 0xFF;
@@ -440,9 +446,9 @@ uint32_t transColor(uint32_t rgb, uint8_t trans)
   rgb = (alpha << 24) | (b << 16) | (g << 8) | r;
   
   return rgb;
-}*/
+}
 
-uint32_t temp_to_rgb(float temp, float t_min, float t_max)
+uint32_t temp_to_rgb_better(float temp, float t_min, float t_max)
 {
   uint8_t alpha = 0x00;
   uint8_t r = 0xFF;
@@ -483,6 +489,14 @@ uint32_t temp_to_rgb(float temp, float t_min, float t_max)
   rgb = (alpha << 24) | (b << 16) | (g << 8) | r;
   
   return rgb;
+}
+
+uint32_t temp_to_rgb(float temp, float t_min, float t_max)
+{
+  if (better_color_ramping)
+    return temp_to_rgb_better(temp, t_min, t_max);
+
+  return temp_to_rgb_simple(temp, t_min, t_max);
 }
 
 void drawPixel(uint16_t col, uint16_t row, uint32_t color)
