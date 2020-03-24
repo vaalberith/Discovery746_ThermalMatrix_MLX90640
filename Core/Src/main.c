@@ -69,6 +69,8 @@
 
 #include "MLX90640_API.h"
 
+#include "bme280.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -700,6 +702,78 @@ void handleMLXdata()
   setlabelTemp();
 }
 
+// BME
+
+struct bme280_dev dev;
+
+void user_delay_ms(uint32_t period)
+{
+  HAL_Delay(period);
+}
+
+int8_t user_i2c_read(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
+{
+  HAL_I2C_Master_Transmit(&hi2c1, id, &reg_addr, 1, 1000);
+  HAL_Delay(10);
+  HAL_I2C_Master_Receive(&hi2c1, id, data, len, 1000);
+  return 0;
+}
+
+int8_t user_i2c_write(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len)
+{
+  uint8_t * buf;
+  buf = (uint8_t*)malloc(len + 1);
+  buf[0] = reg_addr;
+  memcpy(buf +1, data, len);
+  HAL_I2C_Master_Transmit(&hi2c1, id, buf, len + 1, 1000);
+  free(buf);
+  return 0;
+}
+
+void BME280_data_forced_mode(struct bme280_dev *dev, struct bme280_data *comp_data)
+{
+    uint8_t settings_sel;
+
+    /* Recommended mode of operation: Indoor navigation */
+    dev->settings.osr_h = BME280_OVERSAMPLING_1X;
+    dev->settings.osr_p = BME280_OVERSAMPLING_16X;
+    dev->settings.osr_t = BME280_OVERSAMPLING_2X;
+    dev->settings.filter = BME280_FILTER_COEFF_16;
+
+    settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+
+    bme280_set_sensor_settings(settings_sel, dev);
+    
+    bme280_set_sensor_mode(BME280_FORCED_MODE, dev);
+    
+    dev->delay_ms(40);
+    
+    bme280_get_sensor_data(BME280_ALL, comp_data, dev);
+}
+
+uint8_t BME280_API_init(uint8_t addr)
+{
+  //dev.dev_id = BME280_I2C_ADDR_PRIM << 1;
+  //dev.dev_id = BME280_I2C_ADDR_SEC << 1;
+  dev.dev_id = addr << 1;
+  dev.intf = BME280_I2C_INTF;
+  dev.read = user_i2c_read;
+  dev.write = user_i2c_write;
+  dev.delay_ms = user_delay_ms;
+
+  return bme280_init(&dev);
+}
+
+uint8_t bmeData[32]; // BME data ascii
+
+void handleBME280()
+{
+  struct bme280_data comp_data;
+  
+  BME280_data_forced_mode(&dev, &comp_data);
+  snprintf((char*)bmeData, sizeof(bmeData), "   %.2f\° %.1f\%% %d P   ", (float)comp_data.temperature / 100, (float)comp_data.humidity / 1024, comp_data.pressure);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -771,7 +845,6 @@ int main(void)
   GUI_Clear();
   GUI_SelectLayer(0);
 
-  
   //
   HAL_Delay(10);
   CreateWindow();
@@ -857,6 +930,12 @@ int main(void)
       MLX90640_CalculateTo(frame, &mlx90640, emissivity , Tr, mlx90640To);
       
       handleMLXdata();
+    }
+    else
+    {
+      BME280_API_init(BME280_I2C_ADDR_PRIM); 
+      handleBME280();
+      drawText((char*)bmeData, 100, 100, GUI_WHITE, &GUI_Font8x16);
     }
   }
     
