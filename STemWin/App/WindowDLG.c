@@ -47,6 +47,7 @@
 
 
 // USER START (Optionally insert additional defines)
+#include "stdio.h"
 // USER END
 
 /*********************************************************************
